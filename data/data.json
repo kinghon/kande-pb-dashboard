@@ -1,0 +1,76 @@
+{
+  "leaderboard": {
+    "bots": {
+      "FLASH": { "team": "Lead Generation", "division": "Revenue & Sales", "specialty": "Finding and qualifying leads", "scores": { "quality": 88, "insight": 82, "efficiency": 90, "productivity": 85 }, "tier": "Gold", "tasksCompleted": 142, "status": "active", "currentTask": "Scraping wedding directories for SF leads" },
+      "BELLE": { "team": "Wedding Sales", "division": "Revenue & Sales", "specialty": "Wedding market expert", "scores": { "quality": 92, "insight": 88, "efficiency": 85, "productivity": 90 }, "tier": "Diamond", "tasksCompleted": 167, "status": "active", "currentTask": "Following up with Q1 bridal show contacts" },
+      "RAVEN": { "team": "Corporate & Brand Activations", "division": "Revenue & Sales", "specialty": "Brand activations & corporate", "scores": { "quality": 85, "insight": 90, "efficiency": 82, "productivity": 78 }, "tier": "Gold", "tasksCompleted": 98, "status": "active", "currentTask": "Drafting RFP response for Oracle event" },
+      "PIXEL": { "team": "Website & SEO", "division": "Marketing & Brand", "specialty": "Web presence & search", "scores": { "quality": 94, "insight": 91, "efficiency": 88, "productivity": 92 }, "tier": "Diamond", "tasksCompleted": 203, "status": "active", "currentTask": "Optimizing Las Vegas landing page" },
+      "NOVA": { "team": "Social Media", "division": "Marketing & Brand", "specialty": "Content & engagement", "scores": { "quality": 87, "insight": 85, "efficiency": 92, "productivity": 88 }, "tier": "Gold", "tasksCompleted": 178, "status": "active", "currentTask": "Scheduling Instagram Reels batch" },
+      "PRISM": { "team": "Creative & Branding", "division": "Marketing & Brand", "specialty": "Design & templates", "scores": { "quality": 91, "insight": 78, "efficiency": 86, "productivity": 84 }, "tier": "Gold", "tasksCompleted": 115, "status": "active", "currentTask": "Creating new overlay templates for summer" },
+      "SYNC": { "team": "Event Coordination", "division": "Operations & Logistics", "specialty": "Scheduling & logistics", "scores": { "quality": 89, "insight": 84, "efficiency": 93, "productivity": 91 }, "tier": "Diamond", "tasksCompleted": 234, "status": "active", "currentTask": "Coordinating weekend event assignments" },
+      "BOLT": { "team": "Equipment & Fleet", "division": "Operations & Logistics", "specialty": "Fleet & maintenance", "scores": { "quality": 86, "insight": 79, "efficiency": 91, "productivity": 87 }, "tier": "Gold", "tasksCompleted": 156, "status": "active", "currentTask": "Running maintenance checks on Booth #3" },
+      "COACH": { "team": "Staffing & Training", "division": "Operations & Logistics", "specialty": "Training & HR", "scores": { "quality": 83, "insight": 86, "efficiency": 80, "productivity": 82 }, "tier": "Silver", "tasksCompleted": 89, "status": "active", "currentTask": "Updating VA training documentation" },
+      "FORGE": { "team": "Dashboard & Tools", "division": "Technology & Product", "specialty": "Tools & features", "scores": { "quality": 93, "insight": 89, "efficiency": 87, "productivity": 91 }, "tier": "Diamond", "tasksCompleted": 187, "status": "active", "currentTask": "Building pb.kandedash.com operations dashboard" },
+      "LENS": { "team": "Analytics & Reporting", "division": "Technology & Product", "specialty": "Data & reporting", "scores": { "quality": 88, "insight": 93, "efficiency": 84, "productivity": 80 }, "tier": "Gold", "tasksCompleted": 132, "status": "active", "currentTask": "Generating Q2 revenue forecast report" },
+      "WIRE": { "team": "Automation", "division": "Technology & Product", "specialty": "Workflows & integrations", "scores": { "quality": 90, "insight": 87, "efficiency": 94, "productivity": 89 }, "tier": "Diamond", "tasksCompleted": 198, "status": "active", "currentTask": "Optimizing email response automation flow" },
+      "MARGIN": { "team": "Pricing & Revenue", "division": "Finance & Strategy", "specialty": "Revenue optimization", "scores": { "quality": 87, "insight": 91, "efficiency": 83, "productivity": 79 }, "tier": "Gold", "tasksCompleted": 94, "status": "active", "currentTask": "Analyzing summer pricing for SF market" },
+      "LEDGER": { "team": "Finance & Compliance", "division": "Finance & Strategy", "specialty": "Accounting & compliance", "scores": { "quality": 91, "insight": 80, "efficiency": 89, "productivity": 85 }, "tier": "Gold", "tasksCompleted": 112, "status": "active", "currentTask": "Processing Q1 invoices and tax prep" },
+      "SCOUT": { "team": "Market Research", "division": "Intelligence & Growth", "specialty": "Market & competitor intel", "scores": { "quality": 86, "insight": 94, "efficiency": 81, "productivity": 83 }, "tier": "Gold", "tasksCompleted": 108, "status": "active", "currentTask": "Tracking competitor pricing changes in LV" },
+      "ATLAS": { "team": "Expansion", "division": "Intelligence & Growth", "specialty": "Growth strategy", "scores": { "quality": 84, "insight": 92, "efficiency": 78, "productivity": 76 }, "tier": "Silver", "tasksCompleted": 67, "status": "active", "currentTask": "Evaluating Austin TX market potential" },
+      "GLOW": { "team": "Client Experience", "division": "Intelligence & Growth", "specialty": "Reviews & satisfaction", "scores": { "quality": 90, "insight": 85, "efficiency": 88, "productivity": 86 }, "tier": "Gold", "tasksCompleted": 145, "status": "active", "currentTask": "Responding to recent Google reviews" }
+    },
+    "lastUpdated": "2025-07-17T12:00:00Z"
+  },
+  "departments": {
+    "divisions": {
+      "Revenue & Sales": { "emoji": "📸", "motto": "Fill the calendar. Every weekend should be booked.", "teams": ["FLASH", "BELLE", "RAVEN"] },
+      "Marketing & Brand": { "emoji": "📣", "motto": "Make them find us before they find anyone else.", "teams": ["PIXEL", "NOVA", "PRISM"] },
+      "Operations & Logistics": { "emoji": "⚡", "motto": "Every event runs flawless. Zero excuses.", "teams": ["SYNC", "BOLT", "COACH"] },
+      "Technology & Product": { "emoji": "💻", "motto": "Build the tools that make us faster than everyone else.", "teams": ["FORGE", "LENS", "WIRE"] },
+      "Finance & Strategy": { "emoji": "💰", "motto": "Know your numbers. Every dollar tracked.", "teams": ["MARGIN", "LEDGER"] },
+      "Intelligence & Growth": { "emoji": "🔬", "motto": "Know the market before the market knows itself.", "teams": ["SCOUT", "ATLAS", "GLOW"] }
+    }
+  },
+  "inbox": {
+    "emails": [],
+    "lastSync": null,
+    "syncAvailable": false
+  },
+  "seo": {
+    "keywords": {
+      "sf": [
+        { "keyword": "photo booth rental san francisco", "position": 8, "change": 2, "volume": 1200, "history": [12, 11, 10, 9, 8] },
+        { "keyword": "sf photo booth", "position": 5, "change": 1, "volume": 800, "history": [9, 8, 7, 6, 5] },
+        { "keyword": "san francisco event photo booth", "position": 12, "change": -1, "volume": 600, "history": [10, 11, 11, 11, 12] },
+        { "keyword": "wedding photo booth sf", "position": 6, "change": 3, "volume": 500, "history": [15, 12, 9, 9, 6] },
+        { "keyword": "corporate photo booth bay area", "position": 4, "change": 1, "volume": 400, "history": [8, 7, 6, 5, 4] }
+      ],
+      "lv": [
+        { "keyword": "photo booth rental las vegas", "position": 6, "change": 3, "volume": 2200, "history": [14, 12, 10, 9, 6] },
+        { "keyword": "vegas photo booth", "position": 3, "change": 0, "volume": 1500, "history": [5, 4, 4, 3, 3] },
+        { "keyword": "las vegas event photo booth", "position": 9, "change": 2, "volume": 900, "history": [15, 13, 12, 11, 9] },
+        { "keyword": "wedding photo booth vegas", "position": 7, "change": 1, "volume": 700, "history": [11, 10, 9, 8, 7] },
+        { "keyword": "corporate photo booth las vegas", "position": 5, "change": 2, "volume": 600, "history": [12, 10, 8, 7, 5] }
+      ]
+    },
+    "competitors": [
+      { "name": "SnapStation", "avgPosition": 3.2, "overlap": 8 },
+      { "name": "ShutterBooth", "avgPosition": 5.1, "overlap": 6 },
+      { "name": "PhotoBooth.co", "avgPosition": 4.5, "overlap": 7 },
+      { "name": "Mirror Me Booth", "avgPosition": 6.8, "overlap": 5 }
+    ],
+    "lastCheck": "2025-07-17T08:00:00Z"
+  },
+  "activity": [
+    { "timestamp": "2025-07-17T11:45:00Z", "bot": "FORGE", "action": "Deployed new operations dashboard", "type": "tech" },
+    { "timestamp": "2025-07-17T11:30:00Z", "bot": "BELLE", "action": "Closed wedding booking — Martinez/Chen wedding, $2,400", "type": "revenue" },
+    { "timestamp": "2025-07-17T11:15:00Z", "bot": "PIXEL", "action": "Published optimized Las Vegas landing page", "type": "marketing" },
+    { "timestamp": "2025-07-17T11:00:00Z", "bot": "SYNC", "action": "Assigned 3 staff to Saturday Hilton event", "type": "ops" },
+    { "timestamp": "2025-07-17T10:45:00Z", "bot": "WIRE", "action": "Automated 12 quote responses via template engine", "type": "tech" },
+    { "timestamp": "2025-07-17T10:30:00Z", "bot": "SCOUT", "action": "Identified new competitor in LV market: SnapFun", "type": "intel" },
+    { "timestamp": "2025-07-17T10:15:00Z", "bot": "GLOW", "action": "Responded to 5 Google reviews (avg 4.8★)", "type": "cx" },
+    { "timestamp": "2025-07-17T10:00:00Z", "bot": "NOVA", "action": "Posted event highlight reel — 12.4K views", "type": "marketing" },
+    { "timestamp": "2025-07-17T09:45:00Z", "bot": "FLASH", "action": "Generated 23 new wedding leads from The Knot", "type": "revenue" },
+    { "timestamp": "2025-07-17T09:30:00Z", "bot": "MARGIN", "action": "Updated summer pricing matrix for peak season", "type": "finance" }
+  ]
+}

@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Kande Photo Booths — Operations Dashboard</title>
+  <link rel="stylesheet" href="/css/style.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+</head>
+<body>
+
+  <!-- NAV -->
+  <nav class="navbar">
+    <a href="/" class="nav-brand" onclick="navigate('home'); return false;">
+      <div class="logo">📸</div>
+      <span>Kande PB Ops</span>
+    </a>
+    <ul class="nav-links" id="navLinks">
+      <li><a href="/" data-page="home" class="active" onclick="navigate('home'); return false;">🏠 Home</a></li>
+      <li><a href="/leaderboard" data-page="leaderboard" onclick="navigate('leaderboard'); return false;">🏆 Leaderboard</a></li>
+      <li><a href="/departments" data-page="departments" onclick="navigate('departments'); return false;">🏛️ Departments</a></li>
+      <li><a href="/inbox" data-page="inbox" onclick="navigate('inbox'); return false;">📧 Inbox</a></li>
+      <li><a href="/seo" data-page="seo" onclick="navigate('seo'); return false;">🔍 SEO</a></li>
+    </ul>
+    <button class="nav-hamburger" onclick="toggleNav()">☰</button>
+  </nav>
+
+  <div class="main-content">
+
+    <!-- ===== HOME ===== -->
+    <div class="page active" id="page-home">
+      <div class="page-header">
+        <h1>📸 Operations Command Center</h1>
+        <p>Kande Photo Booths — 17 bots. 6 divisions. 1 mission.</p>
+      </div>
+
+      <div class="stats-grid" id="homeStats"></div>
+
+      <div class="section-header">
+        <h2>Quick Access</h2>
+      </div>
+      <div class="quick-links">
+        <div class="quick-link" onclick="navigate('leaderboard')">
+          <div class="ql-icon">🏆</div>
+          <div class="ql-text">
+            <div class="ql-title">Leaderboard</div>
+            <div class="ql-desc">Bot rankings & rivalries</div>
+          </div>
+        </div>
+        <div class="quick-link" onclick="navigate('departments')">
+          <div class="ql-icon">🏛️</div>
+          <div class="ql-text">
+            <div class="ql-title">Departments</div>
+            <div class="ql-desc">6 divisions, 17 bots</div>
+          </div>
+        </div>
+        <div class="quick-link" onclick="navigate('inbox')">
+          <div class="ql-icon">📧</div>
+          <div class="ql-text">
+            <div class="ql-title">Email Inbox</div>
+            <div class="ql-desc">Review & approve replies</div>
+          </div>
+        </div>
+        <div class="quick-link" onclick="navigate('seo')">
+          <div class="ql-icon">🔍</div>
+          <div class="ql-text">
+            <div class="ql-title">SEO Dashboard</div>
+            <div class="ql-desc">Rankings & competitors</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="section-header">
+        <h2>⚡ Recent Activity</h2>
+      </div>
+      <div class="activity-feed" id="activityFeed"></div>
+    </div>
+
+    <!-- ===== LEADERBOARD ===== -->
+    <div class="page" id="page-leaderboard">
+      <div class="page-header">
+        <h1>🏆 Bot Leaderboard</h1>
+        <p>Quality 35% · Insight 25% · Efficiency 20% · Productivity 20%</p>
+      </div>
+
+      <div class="section-header"><h2>👑 Division MVPs</h2></div>
+      <div class="mvps-grid" id="mvpsGrid"></div>
+
+      <div class="section-header"><h2>📊 Full Rankings</h2></div>
+      <div style="overflow-x:auto;">
+        <table class="leaderboard-table" id="leaderboardTable">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Bot</th>
+              <th>Division</th>
+              <th>Team</th>
+              <th>Quality</th>
+              <th>Insight</th>
+              <th>Efficiency</th>
+              <th>Productivity</th>
+              <th>Score</th>
+              <th>Tier</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+
+      <div class="section-header" style="margin-top:32px;"><h2>⚔️ Rivalries</h2></div>
+      <div class="rivalries-grid" id="rivalriesGrid"></div>
+    </div>
+
+    <!-- ===== DEPARTMENTS ===== -->
+    <div class="page" id="page-departments">
+      <div class="page-header">
+        <h1>🏛️ Departments</h1>
+        <p>6 divisions powering Kande Photo Booths operations</p>
+      </div>
+      <div class="divisions-grid" id="divisionsGrid"></div>
+    </div>
+
+    <!-- ===== INBOX ===== -->
+    <div class="page" id="page-inbox">
+      <div class="page-header">
+        <h1>📧 Email Inbox</h1>
+        <p>kurtis@kandephotobooths.com — Review and approve AI-drafted replies</p>
+      </div>
+
+      <div class="inbox-banner">
+        <span class="banner-icon">🛡️</span>
+        <span>GUARDRAIL: No emails are sent without your explicit approval. Every reply must be reviewed first.</span>
+      </div>
+
+      <div id="inboxContent"></div>
+    </div>
+
+    <!-- ===== SEO ===== -->
+    <div class="page" id="page-seo">
+      <div class="page-header">
+        <h1>🔍 SEO Dashboard</h1>
+        <p>Keyword rankings for San Francisco & Las Vegas markets</p>
+      </div>
+
+      <div class="seo-market-tabs" id="seoTabs">
+        <div class="seo-tab active" onclick="switchSeoMarket('sf')">🌉 San Francisco</div>
+        <div class="seo-tab" onclick="switchSeoMarket('lv')">🎰 Las Vegas</div>
+      </div>
+
+      <div class="section-header"><h2>📈 Keyword Rankings</h2></div>
+      <div style="overflow-x:auto;">
+        <table class="keywords-table" id="keywordsTable">
+          <thead>
+            <tr>
+              <th>Keyword</th>
+              <th>Position</th>
+              <th>Change</th>
+              <th>Volume</th>
+              <th>Trend</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+
+      <div class="section-header"><h2>📊 Ranking Trends</h2></div>
+      <div class="chart-container">
+        <canvas id="seoTrendChart" height="300"></canvas>
+      </div>
+
+      <div class="section-header"><h2>🕵️ Competitors</h2></div>
+      <div class="competitors-grid" id="competitorsGrid"></div>
+    </div>
+
+  </div>
+
+  <script src="/js/app.js"></script>
+</body>
+</html>
