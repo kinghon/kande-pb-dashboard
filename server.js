@@ -6,8 +6,17 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 const DATA_PATH = process.env.DATA_PATH || path.join(__dirname, 'data', 'data.json');
 
-app.use(express.json());
+const ADMIN_TOKEN = process.env.ADMIN_TOKEN || 'kpb-ops-2026';
+
+app.use(express.json({ limit: '5mb' }));
 app.use(express.static(path.join(__dirname, 'public')));
+
+// Auth middleware for write endpoints
+function requireToken(req, res, next) {
+  const token = req.headers.authorization?.replace('Bearer ', '') || req.query.token;
+  if (token !== ADMIN_TOKEN) return res.status(401).json({ error: 'Unauthorized' });
+  next();
+}
 
 // --- Data helpers ---
 function readData() {
@@ -74,7 +83,7 @@ app.get('/api/leaderboard', (req, res) => {
   res.json({ bots, divisionMVPs, rivalries, lastUpdated: data.leaderboard.lastUpdated });
 });
 
-app.post('/api/leaderboard/score', (req, res) => {
+app.post('/api/leaderboard/score', requireToken, (req, res) => {
   const { bot, scores } = req.body;
   if (!bot || !scores) return res.status(400).json({ error: 'Missing bot or scores' });
 
@@ -117,7 +126,7 @@ app.get('/api/departments', (req, res) => {
   res.json({ divisions });
 });
 
-app.post('/api/departments/:team/update', (req, res) => {
+app.post('/api/departments/:team/update', requireToken, (req, res) => {
   const { team } = req.params;
   const updates = req.body;
   const data = readData();
@@ -145,7 +154,7 @@ app.get('/api/inbox', (req, res) => {
   });
 });
 
-app.post('/api/inbox/refresh', (req, res) => {
+app.post('/api/inbox/refresh', requireToken, (req, res) => {
   const { emails } = req.body;
   if (!emails || !Array.isArray(emails)) {
     return res.json({
@@ -205,7 +214,7 @@ app.get('/api/activity', (req, res) => {
   res.json({ activity: data.activity.slice(0, 20) });
 });
 
-app.post('/api/activity', (req, res) => {
+app.post('/api/activity', requireToken, (req, res) => {
   const { bot, action, type } = req.body;
   if (!bot || !action) return res.status(400).json({ error: 'Missing bot or action' });
 
