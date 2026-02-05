@@ -48,6 +48,18 @@ jobs:
             echo "✅ Inbox has $COUNT emails"
           fi
           
-      - name: Notify on failure
+      - name: Alert on failure
         if: failure()
-        run: echo "::error::Health check failed! Check pb.kandedash.com"
+        run: |
+          curl -s -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
+            -H "Content-Type: application/json" \
+            -d '{"chat_id": "${{ secrets.TELEGRAM_CHAT_ID }}", "text": "🚨 pb.kandedash.com health check FAILED after deploy. Check GitHub Actions for details."}'
+          
+      - name: Alert on success
+        if: success()
+        run: |
+          INBOX=$(curl -s https://pb.kandedash.com/api/inbox)
+          COUNT=$(echo "$INBOX" | grep -o '"id"' | wc -l)
+          curl -s -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
+            -H "Content-Type: application/json" \
+            -d "{\"chat_id\": \"${{ secrets.TELEGRAM_CHAT_ID }}\", \"text\": \"✅ pb.kandedash.com deployed & verified. Inbox: $COUNT emails.\"}"
