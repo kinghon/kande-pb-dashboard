@@ -252,6 +252,14 @@ async function loadInbox() {
   } else {
     content.innerHTML = renderEmails(data.emails);
   }
+  
+  // Auto-resize all draft textareas to show full content
+  setTimeout(() => {
+    document.querySelectorAll('.email-draft textarea').forEach(ta => {
+      ta.style.height = 'auto';
+      ta.style.height = ta.scrollHeight + 'px';
+    });
+  }, 50);
 }
 
 function renderEmails(emails) {
