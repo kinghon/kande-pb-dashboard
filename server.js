@@ -170,7 +170,7 @@ app.post('/api/inbox/refresh', requireToken, (req, res) => {
   res.json({ success: true, count: emails.length });
 });
 
-app.post('/api/inbox/:id/approve', (req, res) => {
+app.post('/api/inbox/:id/approve', async (req, res) => {
   const { id } = req.params;
   const { reply } = req.body;
   const data = readData();
@@ -182,6 +182,22 @@ app.post('/api/inbox/:id/approve', (req, res) => {
   email.approvedReply = reply;
   email.approvedAt = new Date().toISOString();
   writeData(data);
+  
+  // Webhook: Send Telegram message to trigger draft creation
+  try {
+    const botToken = process.env.TELEGRAM_BOT_TOKEN || '8561608042:AAEXmF9gRSnfqBTHuInQGn5u989Ar_LHF50';
+    const chatId = process.env.TELEGRAM_CHAT_ID || '-5137874547';
+    const message = `📧 CREATE_DRAFT_WEBHOOK\nID: ${id}\nTo: ${email.from}\nSubject: ${email.subject}`;
+    
+    await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ chat_id: chatId, text: message })
+    });
+  } catch (e) {
+    console.error('Webhook notification failed:', e.message);
+  }
+  
   res.json({ success: true, message: 'Reply approved. Gmail draft will be created shortly.', email });
 });
 
