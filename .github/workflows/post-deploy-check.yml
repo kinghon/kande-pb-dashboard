@@ -8,6 +8,9 @@ jobs:
   health-check:
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+        
       - name: Wait for Railway deploy
         run: sleep 90
         
@@ -25,7 +28,6 @@ jobs:
           
           # Check inbox API
           INBOX=$(curl -s https://pb.kandedash.com/api/inbox)
-          echo "Inbox response: $INBOX"
           
           if echo "$INBOX" | grep -q '"error"'; then
             echo "❌ Inbox API error"
@@ -33,10 +35,15 @@ jobs:
           fi
           echo "✅ Inbox API OK"
           
-          # Check if inbox has emails
+          # Check if inbox has emails - if empty, restore from backup
           COUNT=$(echo "$INBOX" | grep -o '"id"' | wc -l)
           if [ "$COUNT" -eq 0 ]; then
-            echo "⚠️ Inbox is empty - data may have been wiped by deploy"
+            echo "⚠️ Inbox empty - restoring drafts..."
+            curl -s -X POST "https://pb.kandedash.com/api/inbox/refresh" \
+              -H "Content-Type: application/json" \
+              -H "Authorization: Bearer ${{ secrets.PB_ADMIN_TOKEN }}" \
+              -d @data/inbox-backup.json
+            echo "✅ Drafts restored"
           else
             echo "✅ Inbox has $COUNT emails"
           fi
