@@ -182,7 +182,22 @@ app.post('/api/inbox/:id/approve', (req, res) => {
   email.approvedReply = reply;
   email.approvedAt = new Date().toISOString();
   writeData(data);
-  res.json({ success: true, message: 'Reply approved. Local agent will send on next sync.', email });
+  res.json({ success: true, message: 'Reply approved. Gmail draft will be created shortly.', email });
+});
+
+app.post('/api/inbox/:id/draft-created', requireToken, (req, res) => {
+  const { id } = req.params;
+  const { draftId } = req.body;
+  const data = readData();
+
+  const email = data.inbox.emails.find(e => e.id === id);
+  if (!email) return res.status(404).json({ error: 'Email not found' });
+
+  email.draftCreated = true;
+  email.draftId = draftId;
+  email.draftCreatedAt = new Date().toISOString();
+  writeData(data);
+  res.json({ success: true, message: 'Draft marked as created.', email });
 });
 
 // --- API: SEO ---
