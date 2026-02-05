@@ -1,0 +1,46 @@
+name: Post-Deploy Health Check
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  health-check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Wait for Railway deploy
+        run: sleep 90
+        
+      - name: Check API health
+        run: |
+          echo "Checking pb.kandedash.com health..."
+          
+          # Check main page
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" https://pb.kandedash.com/)
+          if [ "$STATUS" != "200" ]; then
+            echo "❌ Main page returned $STATUS"
+            exit 1
+          fi
+          echo "✅ Main page OK"
+          
+          # Check inbox API
+          INBOX=$(curl -s https://pb.kandedash.com/api/inbox)
+          echo "Inbox response: $INBOX"
+          
+          if echo "$INBOX" | grep -q '"error"'; then
+            echo "❌ Inbox API error"
+            exit 1
+          fi
+          echo "✅ Inbox API OK"
+          
+          # Check if inbox has emails
+          COUNT=$(echo "$INBOX" | grep -o '"id"' | wc -l)
+          if [ "$COUNT" -eq 0 ]; then
+            echo "⚠️ Inbox is empty - data may have been wiped by deploy"
+          else
+            echo "✅ Inbox has $COUNT emails"
+          fi
+          
+      - name: Notify on failure
+        if: failure()
+        run: echo "::error::Health check failed! Check pb.kandedash.com"
