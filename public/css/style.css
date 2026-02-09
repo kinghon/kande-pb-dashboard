@@ -827,3 +827,19 @@ body {
 ::-webkit-scrollbar-track { background: var(--bg-primary); }
 ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
 ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+/* Inbox enhancements */
+.email-card.urgent {
+  border-left: 4px solid #ef4444;
+  background: linear-gradient(135deg, rgba(239,68,68,0.05), transparent);
+}
+.email-event-date {
+  font-size: 13px;
+  color: var(--primary);
+  margin-top: 4px;
+  font-weight: 500;
+}
+.email-context {
+  margin: 12px 0;
+  padding: 0;
+}

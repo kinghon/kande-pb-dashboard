@@ -263,16 +263,26 @@ async function loadInbox() {
 }
 
 function renderEmails(emails) {
-  return `<div class="email-list">${emails.map(e => `
-    <div class="email-card" id="email-${e.id}">
+  // Group by category
+  const newLeads = emails.filter(e => e.category === 'new_lead' || !e.category);
+  const responses = emails.filter(e => e.category === 'response');
+  
+  const renderCard = (e) => `
+    <div class="email-card ${e.urgent ? 'urgent' : ''}" id="email-${e.id}">
       <div class="email-header">
         <div>
-          <div class="email-from">From: ${e.from}</div>
+          <div class="email-from">${e.urgent ? '🚨 ' : ''}From: ${e.from}</div>
           <div class="email-subject">${e.subject}</div>
+          ${e.eventDate ? `<div class="email-event-date">📅 Event: ${e.eventDate}</div>` : ''}
         </div>
         <div class="email-date">${e.date ? timeAgo(e.date) : ''}</div>
       </div>
-      <div class="email-snippet">${e.snippet || e.body || ''}</div>
+      ${e.context ? `
+        <div class="email-context">
+          <div style="font-size:12px;color:var(--text-secondary);margin-bottom:6px;font-weight:600;">📋 Context:</div>
+          <pre style="white-space:pre-wrap;font-size:13px;margin:0;font-family:inherit;color:var(--text-primary);background:var(--bg-secondary);padding:10px;border-radius:6px;">${e.context}</pre>
+        </div>
+      ` : ''}
       ${e.approved ? `
         <div style="padding:12px;background:rgba(74,222,128,0.1);border-radius:8px;color:var(--success);font-weight:600;">
           ✅ Reply approved ${e.approvedAt ? timeAgo(e.approvedAt) : ''}
@@ -289,7 +299,22 @@ function renderEmails(emails) {
         </div>
       `}
     </div>
-  `).join('')}</div>`;
+  `;
+  
+  let html = '<div class="email-list">';
+  
+  if (newLeads.length > 0) {
+    html += `<h3 style="margin:0 0 16px 0;color:var(--primary);">📬 New Leads (${newLeads.length})</h3>`;
+    html += newLeads.map(renderCard).join('');
+  }
+  
+  if (responses.length > 0) {
+    html += `<h3 style="margin:24px 0 16px 0;color:var(--secondary);">💬 Responses Needed (${responses.length})</h3>`;
+    html += responses.map(renderCard).join('');
+  }
+  
+  html += '</div>';
+  return html;
 }
 
 async function approveEmail(id) {
