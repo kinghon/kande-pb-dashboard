@@ -19,6 +19,8 @@ function requireToken(req, res, next) {
 }
 
 // --- Data helpers ---
+const INBOX_BACKUP_PATH = path.join(__dirname, 'data', 'inbox-backup.json');
+
 function readData() {
   try {
     return JSON.parse(fs.readFileSync(DATA_PATH, 'utf8'));
@@ -33,6 +35,30 @@ function writeData(data) {
   if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
   fs.writeFileSync(DATA_PATH, JSON.stringify(data, null, 2));
 }
+
+// Load inbox from backup on startup (persists across Railway deploys)
+function loadInboxFromBackup() {
+  try {
+    if (fs.existsSync(INBOX_BACKUP_PATH)) {
+      const backup = JSON.parse(fs.readFileSync(INBOX_BACKUP_PATH, 'utf8'));
+      const data = readData();
+      if (data && backup.emails && backup.emails.length > 0) {
+        // Only load backup if current inbox is empty or has fewer emails
+        if (!data.inbox.emails || data.inbox.emails.length < backup.emails.length) {
+          data.inbox.emails = backup.emails;
+          data.inbox.lastSync = backup.lastSync || new Date().toISOString();
+          writeData(data);
+          console.log(`Loaded ${backup.emails.length} emails from backup`);
+        }
+      }
+    }
+  } catch (e) {
+    console.error('Error loading inbox backup:', e.message);
+  }
+}
+
+// Call on startup
+loadInboxFromBackup();
 
 function calcWeightedScore(scores) {
   return Math.round(
