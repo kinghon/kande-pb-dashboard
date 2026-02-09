@@ -181,7 +181,7 @@ app.get('/api/inbox', (req, res) => {
 });
 
 app.post('/api/inbox/refresh', requireToken, (req, res) => {
-  const { emails } = req.body;
+  const { emails, replace } = req.body;
   if (!emails || !Array.isArray(emails)) {
     return res.json({
       success: false,
@@ -190,10 +190,26 @@ app.post('/api/inbox/refresh', requireToken, (req, res) => {
   }
 
   const data = readData();
-  data.inbox.emails = emails;
+  
+  // Default: MERGE (preserve existing, add/update new)
+  // Only replace all if replace=true explicitly
+  if (replace === true) {
+    data.inbox.emails = emails;
+  } else {
+    // Merge: update existing by ID, add new ones
+    const existingById = {};
+    (data.inbox.emails || []).forEach(e => { existingById[e.id] = e; });
+    
+    emails.forEach(e => {
+      existingById[e.id] = { ...existingById[e.id], ...e };
+    });
+    
+    data.inbox.emails = Object.values(existingById);
+  }
+  
   data.inbox.lastSync = new Date().toISOString();
   writeData(data);
-  res.json({ success: true, count: emails.length });
+  res.json({ success: true, count: data.inbox.emails.length, mode: replace ? 'replace' : 'merge' });
 });
 
 app.post('/api/inbox/:id/approve', (req, res) => {
