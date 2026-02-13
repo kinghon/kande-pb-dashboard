@@ -10,6 +10,17 @@ const DATA_PATH = process.env.DATA_PATH || path.join(__dirname, 'data', 'data.js
 const ADMIN_TOKEN = process.env.ADMIN_TOKEN || 'kpb-ops-2026';
 
 app.use(express.json({ limit: '5mb' }));
+
+// Public trends subdomain — block everything except trends share page + API
+app.use((req, res, next) => {
+  const host = (req.hostname || req.headers.host || '').replace(/:\d+$/, '');
+  if (host.startsWith('trends.')) {
+    if (req.path === '/api/trends') return next();
+    return res.sendFile(path.join(__dirname, 'public', 'trends-share.html'));
+  }
+  next();
+});
+
 app.use(express.static(path.join(__dirname, 'public')));
 
 // --- Postgres Setup ---
@@ -705,16 +716,6 @@ app.post('/api/trends/refresh', requireToken, (req, res) => {
   if (trendsCache.refreshing) return res.status(409).json({ error: 'Refresh already in progress' });
   refreshTrends();
   res.json({ success: true, message: 'Refresh started. Takes ~5 min.' });
-});
-
-// Public trends subdomain — only serves the share page
-app.use((req, res, next) => {
-  const host = req.hostname || req.headers.host || '';
-  if (host.startsWith('trends.')) {
-    if (req.path === '/api/trends') return next(); // Allow API
-    return res.sendFile(path.join(__dirname, 'public', 'trends-share.html'));
-  }
-  next();
 });
 
 app.get('/trends', (req, res) => { res.sendFile(path.join(__dirname, 'public', 'trends.html')); });
