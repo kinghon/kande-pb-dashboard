@@ -479,7 +479,7 @@ app.get('/api/stats', (req, res) => {
 });
 
 // --- SPA routes ---
-const pages = ['/', '/leaderboard', '/departments', '/inbox', '/seo', '/trends'];
+const pages = ['/', '/leaderboard', '/departments', '/inbox', '/seo'];
 pages.forEach(route => {
   app.get(route, (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'index.html'));

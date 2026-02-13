@@ -21,7 +21,7 @@
       <li><a href="/departments" data-page="departments" onclick="navigate('departments'); return false;">🏛️ Departments</a></li>
       <li><a href="/inbox" data-page="inbox" onclick="navigate('inbox'); return false;">📧 Inbox</a></li>
       <li><a href="/seo" data-page="seo" onclick="navigate('seo'); return false;">🔍 SEO</a></li>
-      <li><a href="/trends" data-page="trends" onclick="navigate('trends'); return false;">📈 Trends</a></li>
+      <li><a href="/trends">📈 Trends</a></li>
     </ul>
     <button class="nav-hamburger" onclick="toggleNav()">☰</button>
   </nav>
@@ -69,11 +69,11 @@
             <div class="ql-desc">Rankings & competitors</div>
           </div>
         </div>
-        <div class="quick-link" onclick="navigate('trends')">
+        <div class="quick-link" onclick="window.location='/trends'">
           <div class="ql-icon">📈</div>
           <div class="ql-text">
-            <div class="ql-title">Google Trends</div>
-            <div class="ql-desc">Rising search terms & breakouts</div>
+            <div class="ql-title">Trend Discovery</div>
+            <div class="ql-desc">Autocomplete monitoring & breakouts</div>
           </div>
         </div>
       </div>
@@ -181,46 +181,7 @@
     </div>
 
     <!-- ===== TRENDS ===== -->
-    <div class="page" id="page-trends">
-      <div class="page-header">
-        <h1>📈 Google Trends Tracker</h1>
-        <p>Photo booth rental search terms — rising queries & breakout trends</p>
-      </div>
-
-      <div class="stats-grid" id="trendsStats"></div>
-
-      <div class="trends-controls">
-        <div class="trends-controls-left">
-          <div class="trends-period-btns">
-            <button class="trends-period-btn active" data-period="best" onclick="setTrendsPeriod('best')">Best</button>
-            <button class="trends-period-btn" data-period="30" onclick="setTrendsPeriod('30')">30d</button>
-            <button class="trends-period-btn" data-period="60" onclick="setTrendsPeriod('60')">60d</button>
-            <button class="trends-period-btn" data-period="90" onclick="setTrendsPeriod('90')">90d</button>
-          </div>
-          <select class="trends-category-select" id="trendsCategoryFilter" onchange="applyTrendsCategory()">
-            <option value="">All Categories</option>
-          </select>
-          <input type="text" class="trends-search" id="trendsSearchInput" placeholder="Filter terms..." oninput="applyTrendsSearch()">
-        </div>
-        <div class="trends-controls-right">
-          <span class="trends-last-updated" id="trendsLastUpdated">Not yet loaded</span>
-          <button class="btn btn-approve" id="trendsRefreshBtn" onclick="trendsManualRefresh()">🔄 Refresh</button>
-        </div>
-      </div>
-
-      <div id="trendsContent">
-        <div class="empty-state">
-          <div class="empty-icon">📈</div>
-          <h3>Loading trends data...</h3>
-          <p>Please wait while data loads.</p>
-        </div>
-      </div>
-
-      <div class="section-header" style="margin-top:32px;" id="trendsSeedsHeader" hidden>
-        <h2>📌 Seed Keywords Overview</h2>
-      </div>
-      <div class="trends-seed-grid" id="trendsSeedGrid"></div>
-    </div>
+    <!-- Trends page is standalone at /trends -->
 
   </div>
 
