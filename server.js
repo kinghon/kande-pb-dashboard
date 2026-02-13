@@ -708,6 +708,7 @@ app.post('/api/trends/refresh', requireToken, (req, res) => {
 });
 
 app.get('/trends', (req, res) => { res.sendFile(path.join(__dirname, 'public', 'trends.html')); });
+app.get('/trends/share', (req, res) => { res.sendFile(path.join(__dirname, 'public', 'trends-share.html')); });
 
 app.listen(PORT, () => {
   console.log(`🎯 Kande PB Dashboard running on port ${PORT}`);
