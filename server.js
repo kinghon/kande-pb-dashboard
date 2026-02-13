@@ -707,6 +707,16 @@ app.post('/api/trends/refresh', requireToken, (req, res) => {
   res.json({ success: true, message: 'Refresh started. Takes ~5 min.' });
 });
 
+// Public trends subdomain — only serves the share page
+app.use((req, res, next) => {
+  const host = req.hostname || req.headers.host || '';
+  if (host.startsWith('trends.')) {
+    if (req.path === '/api/trends') return next(); // Allow API
+    return res.sendFile(path.join(__dirname, 'public', 'trends-share.html'));
+  }
+  next();
+});
+
 app.get('/trends', (req, res) => { res.sendFile(path.join(__dirname, 'public', 'trends.html')); });
 app.get('/trends/share', (req, res) => { res.sendFile(path.join(__dirname, 'public', 'trends-share.html')); });
 
