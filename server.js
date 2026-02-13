@@ -640,36 +640,62 @@ async function refreshTrends() {
 }
 
 loadTrendsCache();
+// Scan once daily (24h interval)
 setTimeout(() => {
   const lastScan = trendsCache.lastAutocompleteScan ? new Date(trendsCache.lastAutocompleteScan).getTime() : 0;
-  if (Date.now() - lastScan > 12 * 60 * 60 * 1000) refreshTrends();
+  if (Date.now() - lastScan > 24 * 60 * 60 * 1000) refreshTrends();
 }, 20000);
-setInterval(() => { refreshTrends(); }, 12 * 60 * 60 * 1000);
+setInterval(() => { refreshTrends(); }, 24 * 60 * 60 * 1000);
 
 app.get('/api/trends', (req, res) => {
   const ac = trendsCache.autocomplete || {};
   const now = Date.now();
-  const sevenDaysAgo = new Date(now - 7*24*60*60*1000).toISOString().split('T')[0];
-  const thirtyDaysAgo = new Date(now - 30*24*60*60*1000).toISOString().split('T')[0];
+  const ninetyDaysAgo = new Date(now - 90*24*60*60*1000).toISOString().split('T')[0];
 
-  const autocompleteTerms = Object.entries(ac).map(([term, data]) => ({
-    term, ...data,
-    isNew: data.firstSeen >= sevenDaysAgo,
-    isRecent: data.firstSeen >= thirtyDaysAgo && data.firstSeen < sevenDaysAgo,
-    ageDays: Math.floor((now - new Date(data.firstSeen).getTime()) / (24*60*60*1000))
-  })).sort((a, b) => new Date(b.firstSeen) - new Date(a.firstSeen));
+  const autocompleteTerms = Object.entries(ac).map(([term, data]) => {
+    const ageDays = Math.floor((now - new Date(data.firstSeen).getTime()) / (24*60*60*1000));
+    // Consistency: % of scans term appeared in since first seen
+    // appearances / max(1, ageDays) — higher = more consistent
+    const consistency = Math.min(100, Math.round((data.appearances / Math.max(1, ageDays)) * 100));
+    // "Sustained trend" = first seen within last 90 days AND consistently appearing for 14+ days
+    const isSustained = ageDays >= 14 && ageDays <= 90 && consistency >= 30;
+    // "Emerging" = less than 14 days old, being watched
+    const isEmerging = ageDays < 14;
+    // "Established" = older than 90 days
+    const isEstablished = ageDays > 90;
+
+    return {
+      term, ...data, ageDays, consistency,
+      isSustained, isEmerging, isEstablished
+    };
+  });
+
+  // Sustained trends: sorted by consistency then recency
+  const sustained = autocompleteTerms
+    .filter(t => t.isSustained)
+    .sort((a, b) => b.consistency - a.consistency || a.ageDays - b.ageDays);
+
+  // Emerging: still being confirmed (< 14 days)
+  const emerging = autocompleteTerms
+    .filter(t => t.isEmerging)
+    .sort((a, b) => new Date(b.firstSeen) - new Date(a.firstSeen));
+
+  // All terms sorted by first seen
+  const allSorted = autocompleteTerms.sort((a, b) => new Date(b.firstSeen) - new Date(a.firstSeen));
 
   res.json({
-    autocomplete: autocompleteTerms,
+    sustained,
+    emerging,
+    all: allSorted,
     breakouts: trendsCache.breakouts || [],
     history: (trendsCache.history || []).slice(-30),
     lastAutocompleteScan: trendsCache.lastAutocompleteScan,
     lastBreakoutScan: trendsCache.lastBreakoutScan,
     refreshing: trendsCache.refreshing,
     stats: {
-      totalAutocomplete: autocompleteTerms.length,
-      newThisWeek: autocompleteTerms.filter(t => t.isNew).length,
-      newThisMonth: autocompleteTerms.filter(t => t.isRecent || t.isNew).length,
+      totalTracked: autocompleteTerms.length,
+      sustainedTrends: sustained.length,
+      emerging: emerging.length,
       totalBreakouts: (trendsCache.breakouts || []).length
     }
   });
