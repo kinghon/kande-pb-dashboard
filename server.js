@@ -489,31 +489,44 @@ pages.forEach(route => {
 // --- Health check ---
 app.get('/health', (req, res) => res.json({ status: 'ok', timestamp: new Date().toISOString() }));
 
-// --- Google Trends Tracking ---
+// --- Trend Discovery: Autocomplete Monitoring + Breakout Detection ---
 const googleTrends = require('google-trends-api');
+const https = require('https');
 
+const AUTOCOMPLETE_PREFIXES = [
+  'photo booth', '360 photo booth', 'AI photo booth', 'selfie booth',
+  'photo booth rental', 'photo booth for', 'photo booth with'
+];
 const SEED_TERMS = [
   'photo booth rental', 'photo booth', '360 photo booth',
   'photo booth near me', 'photo booth for wedding',
-  'AI photo booth', 'photo booth for party', 'selfie booth'
+  'AI photo booth', 'photo booth for party', 'selfie booth',
+  'glam bot', 'led photo booth', 'roaming photo booth'
 ];
-
-let trendsCache = { terms: [], seeds: [], lastRefreshed: null, refreshing: false };
 const TRENDS_DATA_FILE = path.join(__dirname, 'data', 'trends.json');
 
-function loadTrendsFromFile() {
+let trendsCache = {
+  autocomplete: {},
+  breakouts: [],
+  history: [],
+  lastAutocompleteScan: null,
+  lastBreakoutScan: null,
+  refreshing: false
+};
+
+function loadTrendsCache() {
   try {
     if (fs.existsSync(TRENDS_DATA_FILE)) {
       const data = JSON.parse(fs.readFileSync(TRENDS_DATA_FILE, 'utf8'));
-      if (data && data.terms) {
-        trendsCache = { ...data, refreshing: false };
-        console.log(`[TRENDS] Loaded ${data.terms.length} terms from cache`);
-      }
+      trendsCache = { ...trendsCache, ...data, refreshing: false };
+      const acCount = Object.keys(trendsCache.autocomplete || {}).length;
+      const brCount = (trendsCache.breakouts || []).length;
+      console.log(`[TRENDS] Loaded: ${acCount} autocomplete, ${brCount} breakouts`);
     }
   } catch (e) { console.error('[TRENDS] Load error:', e.message); }
 }
 
-function saveTrendsToFile() {
+function saveTrendsCache() {
   try {
     const dir = path.dirname(TRENDS_DATA_FILE);
     if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
@@ -524,100 +537,151 @@ function saveTrendsToFile() {
 
 function tDelay(ms) { return new Promise(r => setTimeout(r, ms)); }
 
-async function fetchRelatedQueries(seedTerm) {
-  try {
-    const result = await googleTrends.relatedQueries({ keyword: seedTerm, geo: 'US', hl: 'en-US' });
-    const parsed = JSON.parse(result);
-    const rising = parsed?.default?.rankedList?.[1]?.rankedKeyword || [];
-    return rising.map(item => ({
-      term: item.query,
-      value: item.value,
-      isBreakout: item.value >= 5000 || item.formattedValue === 'Breakout',
-      category: seedTerm
-    }));
-  } catch (e) {
-    console.error(`[TRENDS] Related queries error for "${seedTerm}":`, e.message);
-    return [];
+// Google Autocomplete API
+async function fetchAutocomplete(query) {
+  return new Promise((resolve) => {
+    const url = `https://suggestqueries.google.com/complete/search?client=firefox&q=${encodeURIComponent(query)}`;
+    https.get(url, { headers: { 'User-Agent': 'Mozilla/5.0' } }, (res) => {
+      let data = '';
+      res.on('data', c => data += c);
+      res.on('end', () => {
+        try { resolve(JSON.parse(data)[1] || []); } catch (e) { resolve([]); }
+      });
+    }).on('error', () => resolve([]));
+  });
+}
+
+// Scan autocomplete: base prefixes + A-Z variations
+async function scanAutocomplete() {
+  console.log('[TRENDS] Autocomplete scan starting...');
+  const today = new Date().toISOString().split('T')[0];
+  const previousTerms = new Set(Object.keys(trendsCache.autocomplete || {}));
+  const seenThisScan = new Set();
+
+  for (const prefix of AUTOCOMPLETE_PREFIXES) {
+    const baseSuggestions = await fetchAutocomplete(prefix);
+    for (const s of baseSuggestions) {
+      const key = s.toLowerCase().trim();
+      seenThisScan.add(key);
+      if (!trendsCache.autocomplete[key]) {
+        trendsCache.autocomplete[key] = { firstSeen: today, lastSeen: today, prefix, appearances: 1 };
+      } else {
+        trendsCache.autocomplete[key].lastSeen = today;
+        trendsCache.autocomplete[key].appearances++;
+      }
+    }
+    await tDelay(500);
+
+    for (const letter of 'abcdefghijklmnopqrstuvwxyz') {
+      const suggestions = await fetchAutocomplete(`${prefix} ${letter}`);
+      for (const s of suggestions) {
+        const key = s.toLowerCase().trim();
+        seenThisScan.add(key);
+        if (!trendsCache.autocomplete[key]) {
+          trendsCache.autocomplete[key] = { firstSeen: today, lastSeen: today, prefix: `${prefix} ${letter}`, appearances: 1 };
+        } else {
+          trendsCache.autocomplete[key].lastSeen = today;
+          trendsCache.autocomplete[key].appearances++;
+        }
+      }
+      await tDelay(300);
+    }
+    console.log(`[TRENDS] Scanned "${prefix}" + A-Z`);
   }
+
+  const newTerms = [...seenThisScan].filter(t => !previousTerms.has(t));
+  const lostTerms = [...previousTerms].filter(t => !seenThisScan.has(t));
+
+  if (!trendsCache.history) trendsCache.history = [];
+  trendsCache.history.push({ date: today, newTerms, lostTerms, totalSeen: seenThisScan.size });
+  if (trendsCache.history.length > 90) trendsCache.history = trendsCache.history.slice(-90);
+
+  trendsCache.lastAutocompleteScan = new Date().toISOString();
+  console.log(`[TRENDS] Autocomplete done. ${seenThisScan.size} total, ${newTerms.length} new, ${lostTerms.length} lost`);
 }
 
-async function fetchInterestOverTime(term, days) {
-  try {
-    const endDate = new Date();
-    const startDate = new Date();
-    startDate.setDate(endDate.getDate() - days);
-    const result = await googleTrends.interestOverTime({ keyword: term, startTime: startDate, endTime: endDate, geo: 'US' });
-    const parsed = JSON.parse(result);
-    const timeline = parsed?.default?.timelineData || [];
-    if (timeline.length < 2) return null;
-    const values = timeline.map(t => t.value[0]);
-    const midpoint = Math.floor(values.length / 2);
-    const avgFirst = values.slice(0, midpoint).reduce((a, b) => a + b, 0) / midpoint;
-    const avgSecond = values.slice(midpoint).reduce((a, b) => a + b, 0) / (values.length - midpoint);
-    if (avgFirst === 0) return avgSecond > 0 ? 5000 : 0;
-    return Math.round(((avgSecond - avgFirst) / avgFirst) * 100);
-  } catch (e) { return null; }
+// Scan Google Trends for breakout terms only
+async function scanBreakouts() {
+  console.log('[TRENDS] Breakout scan starting...');
+  const today = new Date().toISOString().split('T')[0];
+  const existingBreakouts = new Map((trendsCache.breakouts || []).map(b => [b.term.toLowerCase(), b]));
+
+  for (const seed of SEED_TERMS) {
+    try {
+      const result = await googleTrends.relatedQueries({ keyword: seed, geo: 'US', hl: 'en-US' });
+      const parsed = JSON.parse(result);
+      const rising = parsed?.default?.rankedList?.[1]?.rankedKeyword || [];
+      for (const item of rising) {
+        if (item.value >= 5000 || item.formattedValue === 'Breakout') {
+          const key = item.query.toLowerCase();
+          if (existingBreakouts.has(key)) {
+            existingBreakouts.get(key).lastSeen = today;
+            existingBreakouts.get(key).appearances = (existingBreakouts.get(key).appearances || 1) + 1;
+          } else {
+            existingBreakouts.set(key, { term: item.query, category: seed, firstSeen: today, lastSeen: today, appearances: 1, value: item.value });
+          }
+        }
+      }
+    } catch (e) { console.error(`[TRENDS] Breakout error "${seed}":`, e.message); }
+    await tDelay(2000);
+  }
+
+  trendsCache.breakouts = [...existingBreakouts.values()].sort((a, b) => new Date(b.firstSeen) - new Date(a.firstSeen));
+  trendsCache.lastBreakoutScan = new Date().toISOString();
+  console.log(`[TRENDS] Breakout done. ${trendsCache.breakouts.length} breakout terms.`);
 }
 
-async function refreshTrendsData() {
+async function refreshTrends() {
   if (trendsCache.refreshing) return;
   trendsCache.refreshing = true;
-  console.log('[TRENDS] Starting refresh...');
-  const allTerms = [];
-  const seedInfo = [];
-  try {
-    for (const seed of SEED_TERMS) {
-      console.log(`[TRENDS] Fetching "${seed}"...`);
-      const related = await fetchRelatedQueries(seed);
-      for (const r of related) {
-        if (!allTerms.find(t => t.term.toLowerCase() === r.term.toLowerCase())) allTerms.push(r);
-      }
-      let currentInterest = 0;
-      try {
-        const iot = await googleTrends.interestOverTime({ keyword: seed, startTime: new Date(Date.now() - 30*24*60*60*1000), endTime: new Date(), geo: 'US' });
-        const parsed = JSON.parse(iot);
-        const tl = parsed?.default?.timelineData || [];
-        if (tl.length > 0) currentInterest = tl[tl.length - 1].value[0];
-      } catch (e) {}
-      seedInfo.push({ term: seed, relatedCount: related.length, currentInterest, status: related.length > 0 ? 'fetched' : 'no data' });
-      await tDelay(2000);
-    }
-    const topTerms = allTerms.sort((a, b) => (b.value || 0) - (a.value || 0)).slice(0, 50);
-    let fetchCount = 0;
-    for (const term of topTerms) {
-      if (term.isBreakout) { term.change30 = 5000; term.change60 = 5000; term.change90 = 5000; continue; }
-      if (fetchCount < 20) {
-        term.change30 = await fetchInterestOverTime(term.term, 30); await tDelay(1500);
-        term.change60 = await fetchInterestOverTime(term.term, 60); await tDelay(1500);
-        term.change90 = await fetchInterestOverTime(term.term, 90); await tDelay(1500);
-        fetchCount++;
-      } else {
-        term.change30 = term.value || null; term.change60 = term.value || null; term.change90 = term.value || null;
-      }
-    }
-    for (const term of allTerms.slice(50)) { term.change30 = term.value || null; term.change60 = term.value || null; term.change90 = term.value || null; }
-    trendsCache.terms = allTerms; trendsCache.seeds = seedInfo;
-    trendsCache.lastRefreshed = new Date().toISOString(); trendsCache.refreshing = false;
-    saveTrendsToFile();
-    console.log(`[TRENDS] Done. ${allTerms.length} terms cached.`);
-  } catch (e) { console.error('[TRENDS] Refresh error:', e.message); trendsCache.refreshing = false; }
+  try { await scanAutocomplete(); await scanBreakouts(); saveTrendsCache(); }
+  catch (e) { console.error('[TRENDS] Refresh error:', e.message); }
+  trendsCache.refreshing = false;
 }
 
-loadTrendsFromFile();
+loadTrendsCache();
 setTimeout(() => {
-  if (!trendsCache.lastRefreshed || Date.now() - new Date(trendsCache.lastRefreshed).getTime() > 6*60*60*1000) refreshTrendsData();
-}, 15000);
-setInterval(() => { refreshTrendsData(); }, 6 * 60 * 60 * 1000);
+  const lastScan = trendsCache.lastAutocompleteScan ? new Date(trendsCache.lastAutocompleteScan).getTime() : 0;
+  if (Date.now() - lastScan > 12 * 60 * 60 * 1000) refreshTrends();
+}, 20000);
+setInterval(() => { refreshTrends(); }, 12 * 60 * 60 * 1000);
 
 app.get('/api/trends', (req, res) => {
-  res.json({ terms: trendsCache.terms || [], seeds: trendsCache.seeds || [], lastRefreshed: trendsCache.lastRefreshed, refreshing: trendsCache.refreshing });
+  const ac = trendsCache.autocomplete || {};
+  const now = Date.now();
+  const sevenDaysAgo = new Date(now - 7*24*60*60*1000).toISOString().split('T')[0];
+  const thirtyDaysAgo = new Date(now - 30*24*60*60*1000).toISOString().split('T')[0];
+
+  const autocompleteTerms = Object.entries(ac).map(([term, data]) => ({
+    term, ...data,
+    isNew: data.firstSeen >= sevenDaysAgo,
+    isRecent: data.firstSeen >= thirtyDaysAgo && data.firstSeen < sevenDaysAgo,
+    ageDays: Math.floor((now - new Date(data.firstSeen).getTime()) / (24*60*60*1000))
+  })).sort((a, b) => new Date(b.firstSeen) - new Date(a.firstSeen));
+
+  res.json({
+    autocomplete: autocompleteTerms,
+    breakouts: trendsCache.breakouts || [],
+    history: (trendsCache.history || []).slice(-30),
+    lastAutocompleteScan: trendsCache.lastAutocompleteScan,
+    lastBreakoutScan: trendsCache.lastBreakoutScan,
+    refreshing: trendsCache.refreshing,
+    stats: {
+      totalAutocomplete: autocompleteTerms.length,
+      newThisWeek: autocompleteTerms.filter(t => t.isNew).length,
+      newThisMonth: autocompleteTerms.filter(t => t.isRecent || t.isNew).length,
+      totalBreakouts: (trendsCache.breakouts || []).length
+    }
+  });
 });
 
 app.post('/api/trends/refresh', requireToken, (req, res) => {
   if (trendsCache.refreshing) return res.status(409).json({ error: 'Refresh already in progress' });
-  refreshTrendsData();
-  res.json({ success: true, message: 'Refresh started.' });
+  refreshTrends();
+  res.json({ success: true, message: 'Refresh started. Takes ~5 min.' });
 });
+
+app.get('/trends', (req, res) => { res.sendFile(path.join(__dirname, 'public', 'trends.html')); });
 
 app.listen(PORT, () => {
   console.log(`🎯 Kande PB Dashboard running on port ${PORT}`);

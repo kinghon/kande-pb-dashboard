@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Trend Discovery — Kande Photo Booths</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f8f9fa; color: #1a1a1a; }
+    .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 16px 24px; display: flex; justify-content: space-between; align-items: center; }
+    .header h1 { font-size: 1.3rem; }
+    .header-actions { display: flex; gap: 10px; }
+    .header-actions a, .header-actions button { background: rgba(255,255,255,0.2); color: white; border: none; padding: 8px 14px; border-radius: 6px; cursor: pointer; text-decoration: none; font-size: 0.85rem; }
+    .header-actions a:hover, .header-actions button:hover { background: rgba(255,255,255,0.35); }
+    .container { max-width: 1200px; margin: 0 auto; padding: 20px; }
+    
+    /* Stats cards */
+    .stats-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 24px; }
+    .stat-card { background: white; border-radius: 10px; padding: 20px; text-align: center; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
+    .stat-value { font-size: 2rem; font-weight: 700; color: #667eea; }
+    .stat-value.green { color: #38a169; }
+    .stat-value.orange { color: #dd6b20; }
+    .stat-value.red { color: #e53e3e; }
+    .stat-label { font-size: 0.8rem; color: #888; margin-top: 4px; text-transform: uppercase; letter-spacing: 0.5px; }
+    
+    /* Tabs */
+    .tabs { display: flex; gap: 0; margin-bottom: 20px; border-bottom: 2px solid #e2e8f0; }
+    .tab { padding: 12px 24px; cursor: pointer; font-weight: 600; color: #888; border-bottom: 2px solid transparent; margin-bottom: -2px; transition: all 0.2s; }
+    .tab:hover { color: #667eea; }
+    .tab.active { color: #667eea; border-bottom-color: #667eea; }
+    .tab .count { background: #eee; color: #666; padding: 2px 8px; border-radius: 10px; font-size: 0.75rem; margin-left: 6px; }
+    .tab.active .count { background: #667eea; color: white; }
+
+    /* Section */
+    .section { background: white; border-radius: 10px; padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); margin-bottom: 20px; display: none; }
+    .section.active { display: block; }
+    .section-title { font-size: 1.1rem; font-weight: 700; margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
+    
+    /* Search */
+    .search-bar { width: 100%; padding: 10px 16px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 0.95rem; margin-bottom: 16px; }
+    .search-bar:focus { outline: none; border-color: #667eea; }
+
+    /* Term list */
+    .term-list { list-style: none; }
+    .term-item { display: flex; justify-content: space-between; align-items: center; padding: 10px 12px; border-bottom: 1px solid #f0f0f0; transition: background 0.15s; }
+    .term-item:hover { background: #f8f9fa; }
+    .term-item:last-child { border-bottom: none; }
+    .term-name { font-weight: 500; flex: 1; }
+    .term-meta { display: flex; gap: 10px; align-items: center; font-size: 0.8rem; color: #888; }
+    
+    /* Badges */
+    .badge { padding: 3px 10px; border-radius: 12px; font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.3px; }
+    .badge-new { background: #c6f6d5; color: #22543d; }
+    .badge-recent { background: #fefcbf; color: #744210; }
+    .badge-breakout { background: #fed7d7; color: #9b2c2c; animation: pulse 2s infinite; }
+    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.7; } }
+    .badge-lost { background: #e2e8f0; color: #718096; text-decoration: line-through; }
+    
+    /* Prefix tag */
+    .prefix-tag { background: #edf2f7; color: #4a5568; padding: 2px 8px; border-radius: 4px; font-size: 0.7rem; }
+    
+    /* History */
+    .history-item { padding: 10px 0; border-bottom: 1px solid #f0f0f0; }
+    .history-date { font-weight: 600; font-size: 0.9rem; }
+    .history-stats { font-size: 0.8rem; color: #888; margin-top: 4px; }
+    .history-terms { margin-top: 6px; display: flex; flex-wrap: wrap; gap: 6px; }
+    .history-term { font-size: 0.75rem; padding: 2px 8px; border-radius: 4px; }
+    .history-term.new { background: #c6f6d5; color: #22543d; }
+    .history-term.lost { background: #fed7d7; color: #9b2c2c; }
+
+    /* Status bar */
+    .status-bar { text-align: center; padding: 8px; font-size: 0.8rem; color: #888; }
+    .status-bar .refreshing { color: #dd6b20; font-weight: 600; }
+    
+    /* Google link */
+    .gtrends-link { color: #667eea; text-decoration: none; font-size: 0.75rem; }
+    .gtrends-link:hover { text-decoration: underline; }
+
+    @media (max-width: 768px) {
+      .stats-row { grid-template-columns: repeat(2, 1fr); }
+      .term-meta { flex-direction: column; align-items: flex-end; gap: 4px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>📡 Trend Discovery</h1>
+    <div class="header-actions">
+      <a href="/">← Dashboard</a>
+      <a href="/inbox">📬 Inbox</a>
+      <button onclick="triggerRefresh()">🔄 Refresh Now</button>
+    </div>
+  </div>
+
+  <div class="container">
+    <div class="stats-row" id="statsRow">
+      <div class="stat-card"><div class="stat-value" id="statTotal">—</div><div class="stat-label">Total Terms Tracked</div></div>
+      <div class="stat-card"><div class="stat-value green" id="statNew">—</div><div class="stat-label">🆕 New This Week</div></div>
+      <div class="stat-card"><div class="stat-value orange" id="statMonth">—</div><div class="stat-label">New This Month</div></div>
+      <div class="stat-card"><div class="stat-value red" id="statBreakouts">—</div><div class="stat-label">🔥 Breakout Terms</div></div>
+    </div>
+
+    <div class="tabs">
+      <div class="tab active" onclick="switchTab('new')">🆕 New Terms <span class="count" id="tabNewCount">0</span></div>
+      <div class="tab" onclick="switchTab('breakouts')">🔥 Breakouts <span class="count" id="tabBreakoutCount">0</span></div>
+      <div class="tab" onclick="switchTab('all')">📋 All Terms <span class="count" id="tabAllCount">0</span></div>
+      <div class="tab" onclick="switchTab('history')">📊 History</div>
+    </div>
+
+    <!-- New Terms -->
+    <div class="section active" id="sec-new">
+      <div class="section-title">🆕 Newly Discovered Search Terms</div>
+      <p style="color:#888; font-size:0.85rem; margin-bottom:12px;">Terms that appeared in Google Autocomplete for the first time in the last 7 days. These are emerging searches people are typing right now.</p>
+      <input class="search-bar" id="searchNew" placeholder="Search new terms..." oninput="filterList('new')">
+      <ul class="term-list" id="listNew"></ul>
+    </div>
+
+    <!-- Breakouts -->
+    <div class="section" id="sec-breakouts">
+      <div class="section-title">🔥 Breakout Terms (5000%+ Growth)</div>
+      <p style="color:#888; font-size:0.85rem; margin-bottom:12px;">Terms Google Trends flags as "Breakout" — massive growth from near zero. These represent entirely new demand.</p>
+      <input class="search-bar" id="searchBreakouts" placeholder="Search breakouts..." oninput="filterList('breakouts')">
+      <ul class="term-list" id="listBreakouts"></ul>
+    </div>
+
+    <!-- All Terms -->
+    <div class="section" id="sec-all">
+      <div class="section-title">📋 All Tracked Autocomplete Terms</div>
+      <input class="search-bar" id="searchAll" placeholder="Search all terms..." oninput="filterList('all')">
+      <ul class="term-list" id="listAll"></ul>
+    </div>
+
+    <!-- History -->
+    <div class="section" id="sec-history">
+      <div class="section-title">📊 Daily Change Log</div>
+      <p style="color:#888; font-size:0.85rem; margin-bottom:12px;">What appeared and disappeared each day in Google Autocomplete.</p>
+      <div id="historyList"></div>
+    </div>
+
+    <div class="status-bar" id="statusBar">Loading...</div>
+  </div>
+
+  <script>
+    let allData = null;
+
+    async function loadData() {
+      try {
+        const res = await fetch('/api/trends');
+        allData = await res.json();
+        renderAll();
+      } catch (e) {
+        document.getElementById('statusBar').innerHTML = 'Error loading data';
+      }
+    }
+
+    function renderAll() {
+      const d = allData;
+      // Stats
+      document.getElementById('statTotal').textContent = d.stats.totalAutocomplete;
+      document.getElementById('statNew').textContent = d.stats.newThisWeek;
+      document.getElementById('statMonth').textContent = d.stats.newThisMonth;
+      document.getElementById('statBreakouts').textContent = d.stats.totalBreakouts;
+      document.getElementById('tabNewCount').textContent = d.stats.newThisWeek;
+      document.getElementById('tabBreakoutCount').textContent = d.stats.totalBreakouts;
+      document.getElementById('tabAllCount').textContent = d.stats.totalAutocomplete;
+
+      // New terms (last 7 days)
+      const newTerms = d.autocomplete.filter(t => t.isNew);
+      renderTermList('listNew', newTerms, true);
+
+      // Breakouts
+      renderBreakoutList('listBreakouts', d.breakouts);
+
+      // All terms
+      renderTermList('listAll', d.autocomplete, false);
+
+      // History
+      renderHistory(d.history);
+
+      // Status
+      const lastScan = d.lastAutocompleteScan ? new Date(d.lastAutocompleteScan).toLocaleString() : 'Never';
+      const refreshMsg = d.refreshing ? '<span class="refreshing">⏳ Scanning in progress...</span>' : '';
+      document.getElementById('statusBar').innerHTML = `Last scan: ${lastScan} ${refreshMsg}`;
+    }
+
+    function renderTermList(containerId, terms, showBadge) {
+      const container = document.getElementById(containerId);
+      if (!terms.length) {
+        container.innerHTML = '<li class="term-item" style="color:#888; justify-content:center;">No terms found yet. First scan may take a few minutes.</li>';
+        return;
+      }
+      container.innerHTML = terms.map(t => {
+        const trendsUrl = `https://trends.google.com/trends/explore?q=${encodeURIComponent(t.term)}&geo=US`;
+        let badge = '';
+        if (showBadge || t.isNew) badge = '<span class="badge badge-new">🆕 NEW</span>';
+        else if (t.isRecent) badge = '<span class="badge badge-recent">Recent</span>';
+        return `<li class="term-item" data-term="${t.term.toLowerCase()}">
+          <span class="term-name">${escapeHtml(t.term)} ${badge}</span>
+          <span class="term-meta">
+            <span class="prefix-tag">${escapeHtml(t.prefix || '')}</span>
+            <span title="First seen">${t.ageDays === 0 ? 'Today' : t.ageDays + 'd ago'}</span>
+            <span title="Times seen">×${t.appearances}</span>
+            <a href="${trendsUrl}" target="_blank" class="gtrends-link">Trends ↗</a>
+          </span>
+        </li>`;
+      }).join('');
+    }
+
+    function renderBreakoutList(containerId, breakouts) {
+      const container = document.getElementById(containerId);
+      if (!breakouts.length) {
+        container.innerHTML = '<li class="term-item" style="color:#888; justify-content:center;">No breakout terms found yet.</li>';
+        return;
+      }
+      container.innerHTML = breakouts.map(b => {
+        const trendsUrl = `https://trends.google.com/trends/explore?q=${encodeURIComponent(b.term)}&geo=US`;
+        const ageDays = Math.floor((Date.now() - new Date(b.firstSeen).getTime()) / (24*60*60*1000));
+        const isNew = ageDays <= 7;
+        return `<li class="term-item" data-term="${b.term.toLowerCase()}">
+          <span class="term-name">
+            ${escapeHtml(b.term)}
+            <span class="badge badge-breakout">🔥 BREAKOUT</span>
+            ${isNew ? '<span class="badge badge-new">🆕 NEW</span>' : ''}
+          </span>
+          <span class="term-meta">
+            <span class="prefix-tag">${escapeHtml(b.category)}</span>
+            <span>First seen: ${b.firstSeen}</span>
+            <span>×${b.appearances}</span>
+            <a href="${trendsUrl}" target="_blank" class="gtrends-link">Trends ↗</a>
+          </span>
+        </li>`;
+      }).join('');
+    }
+
+    function renderHistory(history) {
+      const container = document.getElementById('historyList');
+      if (!history || !history.length) {
+        container.innerHTML = '<p style="color:#888;">No history yet. Check back after the first daily scan.</p>';
+        return;
+      }
+      container.innerHTML = [...history].reverse().map(h => {
+        const newHtml = (h.newTerms || []).slice(0, 20).map(t => `<span class="history-term new">+ ${escapeHtml(t)}</span>`).join('');
+        const lostHtml = (h.lostTerms || []).slice(0, 10).map(t => `<span class="history-term lost">- ${escapeHtml(t)}</span>`).join('');
+        return `<div class="history-item">
+          <div class="history-date">${h.date}</div>
+          <div class="history-stats">${h.totalSeen || 0} total · ${(h.newTerms||[]).length} new · ${(h.lostTerms||[]).length} lost</div>
+          <div class="history-terms">${newHtml}${lostHtml}</div>
+        </div>`;
+      }).join('');
+    }
+
+    function switchTab(tab) {
+      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+      document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+      event.target.closest('.tab').classList.add('active');
+      document.getElementById(`sec-${tab}`).classList.add('active');
+    }
+
+    function filterList(type) {
+      const query = document.getElementById(`search${type.charAt(0).toUpperCase() + type.slice(1)}`).value.toLowerCase();
+      const items = document.querySelectorAll(`#list${type.charAt(0).toUpperCase() + type.slice(1)} .term-item`);
+      items.forEach(item => {
+        const term = item.dataset.term || '';
+        item.style.display = term.includes(query) ? '' : 'none';
+      });
+    }
+
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text || '';
+      return div.innerHTML;
+    }
+
+    async function triggerRefresh() {
+      const pw = prompt('Admin token:');
+      if (!pw) return;
+      try {
+        const res = await fetch('/api/trends/refresh', { method: 'POST', headers: { 'Authorization': `Bearer ${pw}` } });
+        const data = await res.json();
+        alert(data.message || data.error);
+      } catch (e) { alert('Error: ' + e.message); }
+    }
+
+    // Auto-refresh display every 30s
+    loadData();
+    setInterval(loadData, 30000);
+  </script>
+</body>
+</html>
