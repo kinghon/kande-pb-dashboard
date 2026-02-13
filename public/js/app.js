@@ -15,7 +15,7 @@ function navigate(page) {
   });
   document.getElementById('navLinks').classList.remove('open');
 
-  const urlMap = { home: '/', leaderboard: '/leaderboard', departments: '/departments', inbox: '/inbox', seo: '/seo' };
+  const urlMap = { home: '/', leaderboard: '/leaderboard', departments: '/departments', inbox: '/inbox', seo: '/seo', trends: '/trends' };
   history.pushState({ page }, '', urlMap[page]);
   loadPage(page);
   window.scrollTo(0, 0);
@@ -32,7 +32,7 @@ window.addEventListener('popstate', (e) => {
 // --- Init ---
 document.addEventListener('DOMContentLoaded', () => {
   const path = window.location.pathname;
-  const pageMap = { '/': 'home', '/leaderboard': 'leaderboard', '/departments': 'departments', '/inbox': 'inbox', '/seo': 'seo' };
+  const pageMap = { '/': 'home', '/leaderboard': 'leaderboard', '/departments': 'departments', '/inbox': 'inbox', '/seo': 'seo', '/trends': 'trends' };
   const page = pageMap[path] || 'home';
   navigate(page);
 });
@@ -44,6 +44,7 @@ async function loadPage(page) {
     case 'departments': await loadDepartments(); break;
     case 'inbox': await loadInbox(); break;
     case 'seo': await loadSEO(); break;
+    case 'trends': await loadTrends(); break;
   }
 }
 
@@ -437,4 +438,254 @@ function renderSeoChart(keywords, marketLabel) {
       }
     }
   });
+}
+
+// === TRENDS ===
+let trendsData = null;
+let trendsPeriod = 'best';
+let trendsCategory = '';
+let trendsSearch = '';
+let trendsSortCol = 'change';
+let trendsSortDir = 'desc';
+
+async function loadTrends() {
+  try {
+    const data = await api('/api/trends');
+    if (!data) return;
+    trendsData = data;
+    renderTrendsAll();
+  } catch (err) {
+    document.getElementById('trendsContent').innerHTML = `
+      <div class="empty-state">
+        <div class="empty-icon">⚠️</div>
+        <h3>Failed to load trends</h3>
+        <p>${err.message || 'Try again later.'}</p>
+      </div>`;
+  }
+}
+
+function renderTrendsAll() {
+  if (!trendsData) return;
+
+  if (trendsData.lastRefreshed) {
+    const d = new Date(trendsData.lastRefreshed);
+    document.getElementById('trendsLastUpdated').textContent = `Updated: ${d.toLocaleDateString()} ${d.toLocaleTimeString()}`;
+  }
+
+  const cats = [...new Set((trendsData.terms || []).map(t => t.category))].sort();
+  const catSelect = document.getElementById('trendsCategoryFilter');
+  catSelect.innerHTML = '<option value="">All Categories</option>' +
+    cats.map(c => `<option value="${c}">${c}</option>`).join('');
+
+  renderTrendsStats();
+  renderTrendsTable();
+  renderTrendsSeedCards();
+}
+
+function renderTrendsStats() {
+  const terms = trendsData.terms || [];
+  const breakouts = terms.filter(t => t.isBreakout).length;
+  const rising = terms.filter(t => {
+    const c = getTrendsBestChange(t);
+    return c > 0 && !t.isBreakout;
+  }).length;
+
+  document.getElementById('trendsStats').innerHTML = `
+    <div class="stat-card">
+      <div class="icon">🔎</div>
+      <div class="value">${terms.length}</div>
+      <div class="label">Trending Terms</div>
+    </div>
+    <div class="stat-card">
+      <div class="icon">🔥</div>
+      <div class="value">${breakouts}</div>
+      <div class="label">Breakout Terms</div>
+    </div>
+    <div class="stat-card">
+      <div class="icon">📈</div>
+      <div class="value">${rising}</div>
+      <div class="label">Rising Terms</div>
+    </div>
+    <div class="stat-card">
+      <div class="icon">🌱</div>
+      <div class="value">${(trendsData.seeds || []).length}</div>
+      <div class="label">Seed Keywords</div>
+    </div>
+  `;
+}
+
+function getTrendsBestChange(term) {
+  const changes = [term.change30, term.change60, term.change90].filter(c => c !== null && c !== undefined);
+  return changes.length === 0 ? null : Math.max(...changes);
+}
+
+function getTrendsChangeForPeriod(term, period) {
+  if (period === 'best') return getTrendsBestChange(term);
+  if (period === '30') return term.change30;
+  if (period === '60') return term.change60;
+  if (period === '90') return term.change90;
+  return getTrendsBestChange(term);
+}
+
+function renderTrendsTable() {
+  let terms = [...(trendsData.terms || [])];
+
+  if (trendsCategory) terms = terms.filter(t => t.category === trendsCategory);
+  if (trendsSearch) {
+    const q = trendsSearch.toLowerCase();
+    terms = terms.filter(t => t.term.toLowerCase().includes(q) || t.category.toLowerCase().includes(q));
+  }
+
+  terms.sort((a, b) => {
+    let valA, valB;
+    if (trendsSortCol === 'term') {
+      valA = a.term.toLowerCase(); valB = b.term.toLowerCase();
+      return trendsSortDir === 'asc' ? valA.localeCompare(valB) : valB.localeCompare(valA);
+    } else if (trendsSortCol === 'category') {
+      valA = a.category.toLowerCase(); valB = b.category.toLowerCase();
+      return trendsSortDir === 'asc' ? valA.localeCompare(valB) : valB.localeCompare(valA);
+    } else if (trendsSortCol === 'change') {
+      valA = getTrendsChangeForPeriod(a, trendsPeriod) ?? -Infinity;
+      valB = getTrendsChangeForPeriod(b, trendsPeriod) ?? -Infinity;
+      if (a.isBreakout && !b.isBreakout) return -1;
+      if (!a.isBreakout && b.isBreakout) return 1;
+      return trendsSortDir === 'desc' ? valB - valA : valA - valB;
+    } else {
+      const key = 'change' + trendsSortCol;
+      valA = a[key] ?? -Infinity; valB = b[key] ?? -Infinity;
+      return trendsSortDir === 'desc' ? valB - valA : valA - valB;
+    }
+    return 0;
+  });
+
+  if (terms.length === 0) {
+    document.getElementById('trendsContent').innerHTML = `
+      <div class="empty-state">
+        <div class="empty-icon">📈</div>
+        <h3>No trending terms found</h3>
+        <p>Data may still be loading. Try refreshing in a few minutes.</p>
+      </div>`;
+    return;
+  }
+
+  const showAll = trendsPeriod === 'best';
+  const thSorted = (col) => trendsSortCol === col ? 'sorted' : '';
+  const thArrow = (col) => trendsSortCol === col ? (trendsSortDir === 'asc' ? '▲' : '▼') : '▽';
+
+  let html = `<div style="overflow-x:auto;"><table class="trends-table">
+    <thead><tr>
+      <th onclick="toggleTrendsSort('term')" class="${thSorted('term')}"># Term <span class="sort-arrow">${thArrow('term')}</span></th>
+      <th onclick="toggleTrendsSort('category')" class="${thSorted('category')}">Category <span class="sort-arrow">${thArrow('category')}</span></th>`;
+
+  if (showAll) {
+    html += `<th onclick="toggleTrendsSort('30')" class="${thSorted('30')}">30d <span class="sort-arrow">${thArrow('30')}</span></th>
+             <th onclick="toggleTrendsSort('60')" class="${thSorted('60')}">60d <span class="sort-arrow">${thArrow('60')}</span></th>
+             <th onclick="toggleTrendsSort('90')" class="${thSorted('90')}">90d <span class="sort-arrow">${thArrow('90')}</span></th>`;
+  } else {
+    html += `<th onclick="toggleTrendsSort('change')" class="${thSorted('change')}">${trendsPeriod}d Change <span class="sort-arrow">${thArrow('change')}</span></th>`;
+  }
+
+  html += `<th>Link</th></tr></thead><tbody>`;
+
+  terms.forEach((t, i) => {
+    const rowClass = t.isBreakout ? 'trends-breakout-row' : '';
+    html += `<tr class="${rowClass}">
+      <td><span class="trends-term-name">${i + 1}. ${escH(t.term)}</span>${t.isBreakout ? '<span class="trends-breakout-badge">🔥 BREAKOUT</span>' : ''}</td>
+      <td><span class="trends-category-badge">${escH(t.category)}</span></td>`;
+
+    if (showAll) {
+      html += `<td>${fmtTrendsChange(t.change30)}</td><td>${fmtTrendsChange(t.change60)}</td><td>${fmtTrendsChange(t.change90)}</td>`;
+    } else {
+      html += `<td>${fmtTrendsChange(getTrendsChangeForPeriod(t, trendsPeriod))}</td>`;
+    }
+
+    const url = `https://trends.google.com/trends/explore?q=${encodeURIComponent(t.term)}&geo=US`;
+    html += `<td><a href="${url}" target="_blank" class="trends-google-link">View →</a></td></tr>`;
+  });
+
+  html += '</tbody></table></div>';
+  document.getElementById('trendsContent').innerHTML = html;
+}
+
+function renderTrendsSeedCards() {
+  const seeds = trendsData.seeds || [];
+  if (seeds.length === 0) return;
+
+  document.getElementById('trendsSeedsHeader').hidden = false;
+  document.getElementById('trendsSeedGrid').innerHTML = seeds.map(s => {
+    const relCount = (trendsData.terms || []).filter(t => t.category === s.term).length;
+    const interest = s.currentInterest ?? 0;
+    return `<div class="trends-seed-card">
+      <h4>🔎 ${escH(s.term)}</h4>
+      <div style="font-size:13px;color:var(--text-secondary);">${relCount} related rising term${relCount !== 1 ? 's' : ''}</div>
+      <div class="seed-meta"><span>Interest: ${interest}/100</span><span>${s.status || 'fetched'}</span></div>
+      <div class="trends-seed-bar"><div class="trends-seed-bar-fill" style="width:${interest}%"></div></div>
+      <a href="https://trends.google.com/trends/explore?q=${encodeURIComponent(s.term)}&geo=US" target="_blank" class="trends-google-link" style="margin-top:8px;">Open in Google Trends →</a>
+    </div>`;
+  }).join('');
+}
+
+function fmtTrendsChange(val) {
+  if (val === null || val === undefined) return '<span class="trends-change-neutral">—</span>';
+  if (val >= 5000) return '<span class="trends-change-positive">+5000%+ 🚀</span>';
+  if (val > 0) return `<span class="trends-change-positive">+${val}%</span>`;
+  if (val === 0) return '<span class="trends-change-neutral">0%</span>';
+  return `<span class="trends-change-negative">${val}%</span>`;
+}
+
+function escH(text) {
+  const d = document.createElement('div');
+  d.textContent = text;
+  return d.innerHTML;
+}
+
+function setTrendsPeriod(period) {
+  trendsPeriod = period;
+  document.querySelectorAll('.trends-period-btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.period === period);
+  });
+  if (period !== 'best') trendsSortCol = 'change';
+  renderTrendsTable();
+}
+
+function applyTrendsCategory() {
+  trendsCategory = document.getElementById('trendsCategoryFilter').value;
+  renderTrendsTable();
+}
+
+function applyTrendsSearch() {
+  trendsSearch = document.getElementById('trendsSearchInput').value;
+  renderTrendsTable();
+}
+
+function toggleTrendsSort(col) {
+  if (trendsSortCol === col) {
+    trendsSortDir = trendsSortDir === 'desc' ? 'asc' : 'desc';
+  } else {
+    trendsSortCol = col;
+    trendsSortDir = (col === 'term' || col === 'category') ? 'asc' : 'desc';
+  }
+  renderTrendsTable();
+}
+
+async function trendsManualRefresh() {
+  const btn = document.getElementById('trendsRefreshBtn');
+  btn.disabled = true;
+  btn.textContent = '⏳ Refreshing...';
+  try {
+    const token = localStorage.getItem('adminToken') || '';
+    const res = await fetch('/api/trends/refresh', {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    if (!res.ok) throw new Error((await res.json()).error || `HTTP ${res.status}`);
+    btn.textContent = '✅ Started!';
+    setTimeout(() => { btn.textContent = '🔄 Refresh'; btn.disabled = false; }, 3000);
+    // Reload data after a delay
+    setTimeout(loadTrends, 5000);
+  } catch (err) {
+    btn.textContent = '❌ Failed';
+    btn.disabled = false;
+    setTimeout(() => { btn.textContent = '🔄 Refresh'; }, 3000);
+  }
 }

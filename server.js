@@ -479,7 +479,7 @@ app.get('/api/stats', (req, res) => {
 });
 
 // --- SPA routes ---
-const pages = ['/', '/leaderboard', '/departments', '/inbox', '/seo'];
+const pages = ['/', '/leaderboard', '/departments', '/inbox', '/seo', '/trends'];
 pages.forEach(route => {
   app.get(route, (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
@@ -618,8 +618,6 @@ app.post('/api/trends/refresh', requireToken, (req, res) => {
   refreshTrendsData();
   res.json({ success: true, message: 'Refresh started.' });
 });
-
-app.get('/trends', (req, res) => { res.sendFile(path.join(__dirname, 'public', 'trends.html')); });
 
 app.listen(PORT, () => {
   console.log(`🎯 Kande PB Dashboard running on port ${PORT}`);
