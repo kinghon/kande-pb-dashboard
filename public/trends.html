@@ -1,0 +1,760 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Google Trends Tracker - Kande Photo Booths</title>
+  <link rel="icon" type="image/jpeg" sizes="32x32" href="/kande-logo.jpg">
+  <link rel="icon" type="image/jpeg" sizes="16x16" href="/kande-logo.jpg">
+  <link rel="apple-touch-icon" href="/kande-logo.jpg">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #f8f9fa;
+      color: #1a1a1a;
+      line-height: 1.5;
+    }
+
+    .header {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 20px;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+
+    .header-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .header h1 {
+      font-size: 1.5rem;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .header-logo {
+      height: 32px;
+      width: auto;
+      border-radius: 4px;
+    }
+
+    .header-controls {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-top: 12px;
+      flex-wrap: wrap;
+    }
+
+    .header button {
+      background: rgba(255,255,255,0.2);
+      color: white;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 14px;
+      transition: all 0.2s;
+    }
+
+    .header button:hover {
+      background: rgba(255,255,255,0.3);
+    }
+
+    .header button.active {
+      background: rgba(255,255,255,0.4);
+      font-weight: 600;
+    }
+
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 15px;
+      margin-bottom: 25px;
+    }
+
+    .stat-card {
+      background: #fff;
+      padding: 20px;
+      border-radius: 12px;
+      text-align: center;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+      border: 1px solid #e2e8f0;
+    }
+
+    .stat-card .number {
+      font-size: 2rem;
+      font-weight: 700;
+      color: #667eea;
+    }
+
+    .stat-card .label {
+      font-size: 0.85rem;
+      color: #666;
+      margin-top: 4px;
+    }
+
+    .controls-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-bottom: 20px;
+      background: #fff;
+      padding: 16px 20px;
+      border-radius: 12px;
+      border: 1px solid #e2e8f0;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+    }
+
+    .controls-left {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .controls-right {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .filter-btn {
+      padding: 8px 16px;
+      border: 1px solid #e2e8f0;
+      background: #fff;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 13px;
+      color: #555;
+      transition: all 0.2s;
+    }
+
+    .filter-btn:hover {
+      border-color: #667eea;
+      color: #667eea;
+    }
+
+    .filter-btn.active {
+      background: #667eea;
+      color: white;
+      border-color: #667eea;
+    }
+
+    .category-filter {
+      padding: 8px 12px;
+      border: 1px solid #e2e8f0;
+      border-radius: 6px;
+      font-size: 13px;
+      color: #555;
+      background: #fff;
+      cursor: pointer;
+    }
+
+    .search-input {
+      padding: 8px 12px;
+      border: 1px solid #e2e8f0;
+      border-radius: 6px;
+      font-size: 13px;
+      width: 200px;
+    }
+
+    .refresh-btn {
+      padding: 8px 16px;
+      background: #667eea;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 13px;
+      transition: all 0.2s;
+    }
+
+    .refresh-btn:hover {
+      background: #5a6fd6;
+    }
+
+    .refresh-btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .last-updated {
+      font-size: 12px;
+      color: #999;
+    }
+
+    .trends-table-wrapper {
+      background: #fff;
+      border-radius: 12px;
+      border: 1px solid #e2e8f0;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+      overflow-x: auto;
+    }
+
+    .trends-table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    .trends-table th {
+      background: #f8f9fa;
+      padding: 14px 16px;
+      text-align: left;
+      font-size: 12px;
+      font-weight: 600;
+      color: #666;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      border-bottom: 2px solid #e2e8f0;
+      cursor: pointer;
+      user-select: none;
+      white-space: nowrap;
+    }
+
+    .trends-table th:hover {
+      color: #667eea;
+    }
+
+    .trends-table th .sort-arrow {
+      margin-left: 4px;
+      opacity: 0.3;
+    }
+
+    .trends-table th.sorted .sort-arrow {
+      opacity: 1;
+      color: #667eea;
+    }
+
+    .trends-table td {
+      padding: 12px 16px;
+      border-bottom: 1px solid #f0f0f0;
+      font-size: 14px;
+    }
+
+    .trends-table tr:hover {
+      background: #f8f9ff;
+    }
+
+    .trends-table tr:last-child td {
+      border-bottom: none;
+    }
+
+    .term-name {
+      font-weight: 500;
+      color: #1a1a1a;
+    }
+
+    .category-badge {
+      display: inline-block;
+      padding: 3px 10px;
+      border-radius: 20px;
+      font-size: 11px;
+      font-weight: 500;
+      background: #eef2ff;
+      color: #667eea;
+      white-space: nowrap;
+    }
+
+    .change-positive {
+      color: #16a34a;
+      font-weight: 600;
+    }
+
+    .change-negative {
+      color: #dc2626;
+      font-weight: 600;
+    }
+
+    .change-neutral {
+      color: #999;
+    }
+
+    .breakout-badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-size: 11px;
+      font-weight: 700;
+      background: linear-gradient(135deg, #f59e0b 0%, #ef4444 100%);
+      color: white;
+      animation: pulse 2s ease-in-out infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.8; }
+    }
+
+    .breakout-row {
+      background: #fffbeb !important;
+    }
+
+    .breakout-row:hover {
+      background: #fef3c7 !important;
+    }
+
+    .loading {
+      text-align: center;
+      padding: 60px 20px;
+      color: #999;
+    }
+
+    .loading .spinner {
+      width: 40px;
+      height: 40px;
+      border: 3px solid #e2e8f0;
+      border-top-color: #667eea;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      margin: 0 auto 16px;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    .error-msg {
+      text-align: center;
+      padding: 40px 20px;
+      color: #dc2626;
+      background: #fff;
+      border-radius: 12px;
+      border: 1px solid #fecaca;
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 60px 20px;
+      color: #999;
+    }
+
+    .empty-state h3 {
+      font-size: 1.2rem;
+      margin-bottom: 8px;
+      color: #666;
+    }
+
+    .seed-terms-section {
+      margin-top: 30px;
+    }
+
+    .seed-terms-section h3 {
+      font-size: 1rem;
+      color: #555;
+      margin-bottom: 12px;
+    }
+
+    .seed-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 12px;
+    }
+
+    .seed-card {
+      background: #fff;
+      padding: 16px;
+      border-radius: 10px;
+      border: 1px solid #e2e8f0;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+    }
+
+    .seed-card h4 {
+      font-size: 0.9rem;
+      color: #667eea;
+      margin-bottom: 8px;
+    }
+
+    .seed-card .related-count {
+      font-size: 12px;
+      color: #999;
+    }
+
+    .seed-card .interest-bar {
+      height: 6px;
+      background: #e2e8f0;
+      border-radius: 3px;
+      margin-top: 8px;
+      overflow: hidden;
+    }
+
+    .seed-card .interest-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #667eea, #764ba2);
+      border-radius: 3px;
+      transition: width 0.5s ease;
+    }
+
+    .google-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      color: #667eea;
+      text-decoration: none;
+      font-size: 12px;
+      margin-top: 6px;
+    }
+
+    .google-link:hover {
+      text-decoration: underline;
+    }
+
+    @media (max-width: 768px) {
+      .header h1 { font-size: 1.2rem; }
+      .container { padding: 12px; }
+      .stats { grid-template-columns: repeat(2, 1fr); }
+      .controls-bar { flex-direction: column; align-items: stretch; }
+      .controls-left, .controls-right { justify-content: center; }
+      .search-input { width: 100%; }
+      .trends-table { font-size: 13px; }
+      .trends-table th, .trends-table td { padding: 10px 8px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div class="header-top">
+      <h1><img src="/kande-logo.jpg" alt="KANDE" class="header-logo"> Trends Tracker</h1>
+    </div>
+    <div class="header-controls">
+      <button onclick="window.location.href='/'">📋 Events</button>
+      <button class="active">📈 Trends</button>
+      <button onclick="window.location.href='/seo.html'">📊 SEO</button>
+    </div>
+  </div>
+
+  <div class="container">
+    <!-- Stats -->
+    <div class="stats" id="statsSection">
+      <div class="stat-card">
+        <div class="number" id="totalTerms">-</div>
+        <div class="label">Trending Terms</div>
+      </div>
+      <div class="stat-card">
+        <div class="number" id="breakoutCount">-</div>
+        <div class="label">🔥 Breakout Terms</div>
+      </div>
+      <div class="stat-card">
+        <div class="number" id="risingCount">-</div>
+        <div class="label">📈 Rising Terms</div>
+      </div>
+      <div class="stat-card">
+        <div class="number" id="seedCount">-</div>
+        <div class="label">Seed Keywords</div>
+      </div>
+    </div>
+
+    <!-- Controls -->
+    <div class="controls-bar">
+      <div class="controls-left">
+        <button class="filter-btn active" data-period="best" onclick="setPeriodFilter('best')">Best</button>
+        <button class="filter-btn" data-period="30" onclick="setPeriodFilter('30')">30 Days</button>
+        <button class="filter-btn" data-period="60" onclick="setPeriodFilter('60')">60 Days</button>
+        <button class="filter-btn" data-period="90" onclick="setPeriodFilter('90')">90 Days</button>
+        <select class="category-filter" id="categoryFilter" onchange="applyCategoryFilter()">
+          <option value="">All Categories</option>
+        </select>
+        <input type="text" class="search-input" id="searchInput" placeholder="Filter terms..." oninput="applySearch()">
+      </div>
+      <div class="controls-right">
+        <span class="last-updated" id="lastUpdated">Not yet loaded</span>
+        <button class="refresh-btn" id="refreshBtn" onclick="manualRefresh()">🔄 Refresh Data</button>
+      </div>
+    </div>
+
+    <!-- Main content -->
+    <div id="mainContent">
+      <div class="loading">
+        <div class="spinner"></div>
+        <p>Loading trends data...</p>
+      </div>
+    </div>
+
+    <!-- Seed terms overview -->
+    <div class="seed-terms-section" id="seedSection" style="display:none;">
+      <h3>📌 Seed Keywords Overview</h3>
+      <div class="seed-grid" id="seedGrid"></div>
+    </div>
+  </div>
+
+  <script>
+    let trendsData = null;
+    let currentPeriod = 'best';
+    let currentCategory = '';
+    let currentSearch = '';
+    let sortCol = 'change';
+    let sortDir = 'desc';
+
+    // Load on page load
+    document.addEventListener('DOMContentLoaded', loadTrends);
+
+    async function loadTrends() {
+      try {
+        const res = await fetch('/api/trends');
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        trendsData = await res.json();
+        renderAll();
+      } catch (err) {
+        document.getElementById('mainContent').innerHTML = `
+          <div class="error-msg">
+            <p>⚠️ Failed to load trends data</p>
+            <p style="font-size:13px; margin-top:8px;">${err.message}</p>
+            <button onclick="loadTrends()" style="margin-top:12px; padding:8px 20px; background:#667eea; color:white; border:none; border-radius:6px; cursor:pointer;">Retry</button>
+          </div>`;
+      }
+    }
+
+    function renderAll() {
+      if (!trendsData) return;
+
+      // Update last refreshed
+      if (trendsData.lastRefreshed) {
+        const d = new Date(trendsData.lastRefreshed);
+        document.getElementById('lastUpdated').textContent = `Updated: ${d.toLocaleDateString()} ${d.toLocaleTimeString()}`;
+      }
+
+      // Populate category filter
+      const cats = [...new Set((trendsData.terms || []).map(t => t.category))].sort();
+      const catSelect = document.getElementById('categoryFilter');
+      catSelect.innerHTML = '<option value="">All Categories</option>' +
+        cats.map(c => `<option value="${c}">${c}</option>`).join('');
+
+      renderStats();
+      renderTable();
+      renderSeedCards();
+    }
+
+    function renderStats() {
+      const terms = trendsData.terms || [];
+      document.getElementById('totalTerms').textContent = terms.length;
+      document.getElementById('breakoutCount').textContent = terms.filter(t => t.isBreakout).length;
+      document.getElementById('risingCount').textContent = terms.filter(t => {
+        const change = getBestChange(t);
+        return change > 0 && !t.isBreakout;
+      }).length;
+      document.getElementById('seedCount').textContent = (trendsData.seeds || []).length;
+    }
+
+    function getBestChange(term) {
+      const changes = [term.change30, term.change60, term.change90].filter(c => c !== null && c !== undefined);
+      if (changes.length === 0) return null;
+      return Math.max(...changes);
+    }
+
+    function getChangeForPeriod(term, period) {
+      if (period === 'best') return getBestChange(term);
+      if (period === '30') return term.change30;
+      if (period === '60') return term.change60;
+      if (period === '90') return term.change90;
+      return getBestChange(term);
+    }
+
+    function renderTable() {
+      let terms = [...(trendsData.terms || [])];
+
+      // Filter by category
+      if (currentCategory) {
+        terms = terms.filter(t => t.category === currentCategory);
+      }
+
+      // Filter by search
+      if (currentSearch) {
+        const q = currentSearch.toLowerCase();
+        terms = terms.filter(t => t.term.toLowerCase().includes(q) || t.category.toLowerCase().includes(q));
+      }
+
+      // Sort
+      terms.sort((a, b) => {
+        let valA, valB;
+        if (sortCol === 'term') {
+          valA = a.term.toLowerCase();
+          valB = b.term.toLowerCase();
+          return sortDir === 'asc' ? valA.localeCompare(valB) : valB.localeCompare(valA);
+        } else if (sortCol === 'category') {
+          valA = a.category.toLowerCase();
+          valB = b.category.toLowerCase();
+          return sortDir === 'asc' ? valA.localeCompare(valB) : valB.localeCompare(valA);
+        } else if (sortCol === 'change') {
+          valA = getChangeForPeriod(a, currentPeriod) ?? -Infinity;
+          valB = getChangeForPeriod(b, currentPeriod) ?? -Infinity;
+          // Breakouts always on top
+          if (a.isBreakout && !b.isBreakout) return -1;
+          if (!a.isBreakout && b.isBreakout) return 1;
+          return sortDir === 'desc' ? valB - valA : valA - valB;
+        } else if (sortCol === '30') {
+          valA = a.change30 ?? -Infinity;
+          valB = b.change30 ?? -Infinity;
+          return sortDir === 'desc' ? valB - valA : valA - valB;
+        } else if (sortCol === '60') {
+          valA = a.change60 ?? -Infinity;
+          valB = b.change60 ?? -Infinity;
+          return sortDir === 'desc' ? valB - valA : valA - valB;
+        } else if (sortCol === '90') {
+          valA = a.change90 ?? -Infinity;
+          valB = b.change90 ?? -Infinity;
+          return sortDir === 'desc' ? valB - valA : valA - valB;
+        }
+        return 0;
+      });
+
+      if (terms.length === 0) {
+        document.getElementById('mainContent').innerHTML = `
+          <div class="empty-state">
+            <h3>No trending terms found</h3>
+            <p>Data may still be loading. Try refreshing in a few minutes.</p>
+          </div>`;
+        return;
+      }
+
+      const showAllPeriods = currentPeriod === 'best';
+
+      let html = `<div class="trends-table-wrapper"><table class="trends-table">
+        <thead><tr>
+          <th onclick="toggleSort('term')" class="${sortCol === 'term' ? 'sorted' : ''}"># Term <span class="sort-arrow">${sortCol === 'term' ? (sortDir === 'asc' ? '▲' : '▼') : '▽'}</span></th>
+          <th onclick="toggleSort('category')" class="${sortCol === 'category' ? 'sorted' : ''}">Category <span class="sort-arrow">${sortCol === 'category' ? (sortDir === 'asc' ? '▲' : '▼') : '▽'}</span></th>`;
+
+      if (showAllPeriods) {
+        html += `
+          <th onclick="toggleSort('30')" class="${sortCol === '30' ? 'sorted' : ''}">30d <span class="sort-arrow">${sortCol === '30' ? (sortDir === 'asc' ? '▲' : '▼') : '▽'}</span></th>
+          <th onclick="toggleSort('60')" class="${sortCol === '60' ? 'sorted' : ''}">60d <span class="sort-arrow">${sortCol === '60' ? (sortDir === 'asc' ? '▲' : '▼') : '▽'}</span></th>
+          <th onclick="toggleSort('90')" class="${sortCol === '90' ? 'sorted' : ''}">90d <span class="sort-arrow">${sortCol === '90' ? (sortDir === 'asc' ? '▲' : '▼') : '▽'}</span></th>`;
+      } else {
+        html += `
+          <th onclick="toggleSort('change')" class="${sortCol === 'change' ? 'sorted' : ''}">${currentPeriod}d Change <span class="sort-arrow">${sortCol === 'change' ? (sortDir === 'asc' ? '▲' : '▼') : '▽'}</span></th>`;
+      }
+
+      html += `<th>Link</th></tr></thead><tbody>`;
+
+      terms.forEach((t, i) => {
+        const rowClass = t.isBreakout ? 'breakout-row' : '';
+
+        html += `<tr class="${rowClass}">
+          <td><span class="term-name">${i + 1}. ${escHtml(t.term)}</span>
+            ${t.isBreakout ? ' <span class="breakout-badge">🔥 BREAKOUT</span>' : ''}</td>
+          <td><span class="category-badge">${escHtml(t.category)}</span></td>`;
+
+        if (showAllPeriods) {
+          html += `<td>${formatChange(t.change30)}</td>
+                   <td>${formatChange(t.change60)}</td>
+                   <td>${formatChange(t.change90)}</td>`;
+        } else {
+          html += `<td>${formatChange(getChangeForPeriod(t, currentPeriod))}</td>`;
+        }
+
+        const trendsUrl = `https://trends.google.com/trends/explore?q=${encodeURIComponent(t.term)}&geo=US`;
+        html += `<td><a href="${trendsUrl}" target="_blank" class="google-link">View →</a></td></tr>`;
+      });
+
+      html += '</tbody></table></div>';
+      document.getElementById('mainContent').innerHTML = html;
+    }
+
+    function renderSeedCards() {
+      const seeds = trendsData.seeds || [];
+      if (seeds.length === 0) return;
+
+      document.getElementById('seedSection').style.display = '';
+      const grid = document.getElementById('seedGrid');
+      grid.innerHTML = seeds.map(s => {
+        const relCount = (trendsData.terms || []).filter(t => t.category === s.term).length;
+        const interest = s.currentInterest ?? 0;
+        return `<div class="seed-card">
+          <h4>🔎 ${escHtml(s.term)}</h4>
+          <div class="related-count">${relCount} related rising term${relCount !== 1 ? 's' : ''}</div>
+          <div style="display:flex; justify-content:space-between; margin-top:6px; font-size:12px; color:#888;">
+            <span>Interest: ${interest}/100</span>
+            <span>${s.status || 'fetched'}</span>
+          </div>
+          <div class="interest-bar"><div class="interest-fill" style="width:${interest}%"></div></div>
+          <a href="https://trends.google.com/trends/explore?q=${encodeURIComponent(s.term)}&geo=US" target="_blank" class="google-link">Open in Google Trends →</a>
+        </div>`;
+      }).join('');
+    }
+
+    function formatChange(val) {
+      if (val === null || val === undefined) return '<span class="change-neutral">—</span>';
+      if (val >= 5000) return '<span class="change-positive">+5000%+ 🚀</span>';
+      if (val > 0) return `<span class="change-positive">+${val}%</span>`;
+      if (val === 0) return '<span class="change-neutral">0%</span>';
+      return `<span class="change-negative">${val}%</span>`;
+    }
+
+    function escHtml(text) {
+      const d = document.createElement('div');
+      d.textContent = text;
+      return d.innerHTML;
+    }
+
+    function setPeriodFilter(period) {
+      currentPeriod = period;
+      document.querySelectorAll('.filter-btn').forEach(b => {
+        b.classList.toggle('active', b.dataset.period === period);
+      });
+      if (period !== 'best') {
+        sortCol = 'change';
+      }
+      renderTable();
+    }
+
+    function applyCategoryFilter() {
+      currentCategory = document.getElementById('categoryFilter').value;
+      renderTable();
+    }
+
+    function applySearch() {
+      currentSearch = document.getElementById('searchInput').value;
+      renderTable();
+    }
+
+    function toggleSort(col) {
+      if (sortCol === col) {
+        sortDir = sortDir === 'desc' ? 'asc' : 'desc';
+      } else {
+        sortCol = col;
+        sortDir = (col === 'term' || col === 'category') ? 'asc' : 'desc';
+      }
+      renderTable();
+    }
+
+    async function manualRefresh() {
+      const btn = document.getElementById('refreshBtn');
+      btn.disabled = true;
+      btn.textContent = '⏳ Refreshing...';
+
+      try {
+        const res = await fetch('/api/trends/refresh', { method: 'POST' });
+        if (!res.ok) {
+          const data = await res.json();
+          throw new Error(data.error || `HTTP ${res.status}`);
+        }
+        await loadTrends();
+        btn.textContent = '✅ Done!';
+        setTimeout(() => { btn.textContent = '🔄 Refresh Data'; btn.disabled = false; }, 2000);
+      } catch (err) {
+        btn.textContent = '❌ Failed';
+        btn.disabled = false;
+        setTimeout(() => { btn.textContent = '🔄 Refresh Data'; }, 3000);
+        console.error('Refresh failed:', err);
+      }
+    }
+  </script>
+</body>
+</html>

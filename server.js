@@ -489,6 +489,138 @@ pages.forEach(route => {
 // --- Health check ---
 app.get('/health', (req, res) => res.json({ status: 'ok', timestamp: new Date().toISOString() }));
 
+// --- Google Trends Tracking ---
+const googleTrends = require('google-trends-api');
+
+const SEED_TERMS = [
+  'photo booth rental', 'photo booth', '360 photo booth',
+  'photo booth near me', 'photo booth for wedding',
+  'AI photo booth', 'photo booth for party', 'selfie booth'
+];
+
+let trendsCache = { terms: [], seeds: [], lastRefreshed: null, refreshing: false };
+const TRENDS_DATA_FILE = path.join(__dirname, 'data', 'trends.json');
+
+function loadTrendsFromFile() {
+  try {
+    if (fs.existsSync(TRENDS_DATA_FILE)) {
+      const data = JSON.parse(fs.readFileSync(TRENDS_DATA_FILE, 'utf8'));
+      if (data && data.terms) {
+        trendsCache = { ...data, refreshing: false };
+        console.log(`[TRENDS] Loaded ${data.terms.length} terms from cache`);
+      }
+    }
+  } catch (e) { console.error('[TRENDS] Load error:', e.message); }
+}
+
+function saveTrendsToFile() {
+  try {
+    const dir = path.dirname(TRENDS_DATA_FILE);
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+    const { refreshing, ...data } = trendsCache;
+    fs.writeFileSync(TRENDS_DATA_FILE, JSON.stringify(data, null, 2));
+  } catch (e) { console.error('[TRENDS] Save error:', e.message); }
+}
+
+function tDelay(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+async function fetchRelatedQueries(seedTerm) {
+  try {
+    const result = await googleTrends.relatedQueries({ keyword: seedTerm, geo: 'US', hl: 'en-US' });
+    const parsed = JSON.parse(result);
+    const rising = parsed?.default?.rankedList?.[1]?.rankedKeyword || [];
+    return rising.map(item => ({
+      term: item.query,
+      value: item.value,
+      isBreakout: item.value >= 5000 || item.formattedValue === 'Breakout',
+      category: seedTerm
+    }));
+  } catch (e) {
+    console.error(`[TRENDS] Related queries error for "${seedTerm}":`, e.message);
+    return [];
+  }
+}
+
+async function fetchInterestOverTime(term, days) {
+  try {
+    const endDate = new Date();
+    const startDate = new Date();
+    startDate.setDate(endDate.getDate() - days);
+    const result = await googleTrends.interestOverTime({ keyword: term, startTime: startDate, endTime: endDate, geo: 'US' });
+    const parsed = JSON.parse(result);
+    const timeline = parsed?.default?.timelineData || [];
+    if (timeline.length < 2) return null;
+    const values = timeline.map(t => t.value[0]);
+    const midpoint = Math.floor(values.length / 2);
+    const avgFirst = values.slice(0, midpoint).reduce((a, b) => a + b, 0) / midpoint;
+    const avgSecond = values.slice(midpoint).reduce((a, b) => a + b, 0) / (values.length - midpoint);
+    if (avgFirst === 0) return avgSecond > 0 ? 5000 : 0;
+    return Math.round(((avgSecond - avgFirst) / avgFirst) * 100);
+  } catch (e) { return null; }
+}
+
+async function refreshTrendsData() {
+  if (trendsCache.refreshing) return;
+  trendsCache.refreshing = true;
+  console.log('[TRENDS] Starting refresh...');
+  const allTerms = [];
+  const seedInfo = [];
+  try {
+    for (const seed of SEED_TERMS) {
+      console.log(`[TRENDS] Fetching "${seed}"...`);
+      const related = await fetchRelatedQueries(seed);
+      for (const r of related) {
+        if (!allTerms.find(t => t.term.toLowerCase() === r.term.toLowerCase())) allTerms.push(r);
+      }
+      let currentInterest = 0;
+      try {
+        const iot = await googleTrends.interestOverTime({ keyword: seed, startTime: new Date(Date.now() - 30*24*60*60*1000), endTime: new Date(), geo: 'US' });
+        const parsed = JSON.parse(iot);
+        const tl = parsed?.default?.timelineData || [];
+        if (tl.length > 0) currentInterest = tl[tl.length - 1].value[0];
+      } catch (e) {}
+      seedInfo.push({ term: seed, relatedCount: related.length, currentInterest, status: related.length > 0 ? 'fetched' : 'no data' });
+      await tDelay(2000);
+    }
+    const topTerms = allTerms.sort((a, b) => (b.value || 0) - (a.value || 0)).slice(0, 50);
+    let fetchCount = 0;
+    for (const term of topTerms) {
+      if (term.isBreakout) { term.change30 = 5000; term.change60 = 5000; term.change90 = 5000; continue; }
+      if (fetchCount < 20) {
+        term.change30 = await fetchInterestOverTime(term.term, 30); await tDelay(1500);
+        term.change60 = await fetchInterestOverTime(term.term, 60); await tDelay(1500);
+        term.change90 = await fetchInterestOverTime(term.term, 90); await tDelay(1500);
+        fetchCount++;
+      } else {
+        term.change30 = term.value || null; term.change60 = term.value || null; term.change90 = term.value || null;
+      }
+    }
+    for (const term of allTerms.slice(50)) { term.change30 = term.value || null; term.change60 = term.value || null; term.change90 = term.value || null; }
+    trendsCache.terms = allTerms; trendsCache.seeds = seedInfo;
+    trendsCache.lastRefreshed = new Date().toISOString(); trendsCache.refreshing = false;
+    saveTrendsToFile();
+    console.log(`[TRENDS] Done. ${allTerms.length} terms cached.`);
+  } catch (e) { console.error('[TRENDS] Refresh error:', e.message); trendsCache.refreshing = false; }
+}
+
+loadTrendsFromFile();
+setTimeout(() => {
+  if (!trendsCache.lastRefreshed || Date.now() - new Date(trendsCache.lastRefreshed).getTime() > 6*60*60*1000) refreshTrendsData();
+}, 15000);
+setInterval(() => { refreshTrendsData(); }, 6 * 60 * 60 * 1000);
+
+app.get('/api/trends', (req, res) => {
+  res.json({ terms: trendsCache.terms || [], seeds: trendsCache.seeds || [], lastRefreshed: trendsCache.lastRefreshed, refreshing: trendsCache.refreshing });
+});
+
+app.post('/api/trends/refresh', requireToken, (req, res) => {
+  if (trendsCache.refreshing) return res.status(409).json({ error: 'Refresh already in progress' });
+  refreshTrendsData();
+  res.json({ success: true, message: 'Refresh started.' });
+});
+
+app.get('/trends', (req, res) => { res.sendFile(path.join(__dirname, 'public', 'trends.html')); });
+
 app.listen(PORT, () => {
   console.log(`🎯 Kande PB Dashboard running on port ${PORT}`);
 });
