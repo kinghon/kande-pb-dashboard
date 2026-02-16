@@ -264,6 +264,9 @@ async function loadInbox() {
 }
 
 function renderEmails(emails) {
+  // Filter out emails with no draft (unless already approved)
+  emails = emails.filter(e => e.approved || (e.draft && e.draft !== 'No draft generated yet.'));
+  
   // Group by category
   const newLeads = emails.filter(e => e.category === 'new_lead' || !e.category);
   const responses = emails.filter(e => e.category === 'response');
