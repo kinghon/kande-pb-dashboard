@@ -438,7 +438,7 @@ app.post('/api/inbox/:id/draft-created', requireToken, async (req, res) => {
 app.delete('/api/inbox/:id', requireToken, async (req, res) => {
   try {
     const { id } = req.params;
-    await pool.query('DELETE FROM pb_inbox WHERE id = $1', [id]);
+    await pool.query('DELETE FROM inbox_emails WHERE id = $1', [id]);
     res.json({ success: true, deleted: id });
   } catch (e) {
     console.error('DELETE /api/inbox/:id error:', e.message);
