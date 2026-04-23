@@ -161,6 +161,31 @@ function writeData(data) {
   fs.writeFileSync(DATA_PATH, JSON.stringify(data, null, 2));
 }
 
+function loadDataWithFallback() {
+  let data = readData();
+  // Validate that leaderboard and departments structures exist
+  const hasLeaderboard = data && data.leaderboard && typeof data.leaderboard.bots === 'object' && Object.keys(data.leaderboard.bots).length > 0;
+  const hasDepartments = data && data.departments && typeof data.departments.divisions === 'object' && Object.keys(data.departments.divisions).length > 0;
+  if (!hasLeaderboard || !hasDepartments) {
+    console.error('[loadDataWithFallback] Primary data missing or invalid. Attempting fallback...');
+    try {
+      const fallbackPath = path.join(__dirname, 'data', 'data.json');
+      const fallback = JSON.parse(fs.readFileSync(fallbackPath, 'utf8'));
+      const fbHasLeaderboard = fallback && fallback.leaderboard && typeof fallback.leaderboard.bots === 'object' && Object.keys(fallback.leaderboard.bots).length > 0;
+      const fbHasDepartments = fallback && fallback.departments && typeof fallback.departments.divisions === 'object' && Object.keys(fallback.departments.divisions).length > 0;
+      if (fbHasLeaderboard && fbHasDepartments) {
+        console.log('[loadDataWithFallback] Fallback data loaded successfully.');
+        data = fallback;
+      } else {
+        console.error('[loadDataWithFallback] Fallback data also invalid.');
+      }
+    } catch (e) {
+      console.error('[loadDataWithFallback] Fallback read failed:', e.message);
+    }
+  }
+  return data;
+}
+
 function calcWeightedScore(scores) {
   return Math.round(
     scores.quality * 0.35 +
@@ -172,8 +197,11 @@ function calcWeightedScore(scores) {
 
 // --- API: Leaderboard ---
 app.get('/api/leaderboard', (req, res) => {
-  const data = readData();
-  if (!data) return res.status(500).json({ error: 'Data unavailable' });
+  const data = loadDataWithFallback();
+  if (!data || !data.leaderboard || !data.leaderboard.bots) {
+    console.error('GET /api/leaderboard: data or leaderboard.bots missing');
+    return res.status(500).json({ error: 'Data unavailable', bots: [] });
+  }
 
   const bots = Object.entries(data.leaderboard.bots).map(([name, bot]) => ({
     name,
@@ -225,8 +253,11 @@ app.post('/api/leaderboard/score', requireToken, (req, res) => {
 
 // --- API: Departments ---
 app.get('/api/departments', (req, res) => {
-  const data = readData();
-  if (!data) return res.status(500).json({ error: 'Data unavailable' });
+  const data = loadDataWithFallback();
+  if (!data || !data.departments || !data.departments.divisions) {
+    console.error('GET /api/departments: data or departments.divisions missing');
+    return res.status(500).json({ error: 'Data unavailable', divisions: [] });
+  }
 
   const divisions = Object.entries(data.departments.divisions).map(([name, div]) => {
     const teams = div.teams.map(botName => {
